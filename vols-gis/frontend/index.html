@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vols GIS - Учет ВОЛС</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-diagram-3"></i> Vols GIS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="nav-map">
+                            <i class="bi bi-map"></i> Карта
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-nodes">
+                            <i class="bi bi-geo-alt"></i> Узлы
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-vols">
+                            <i class="bi bi-diagram-2"></i> Маршруты
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-fibers">
+                            <i class="bi bi-lightning"></i> Волокна
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-links">
+                            <i class="bi bi-link-45deg"></i> Связи
+                        </a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="btn-group me-2" role="group">
+                        <button class="btn btn-outline-light btn-sm" id="btn-draw-node" title="Добавить узел">
+                            <i class="bi bi-geo-alt-fill"></i>
+                        </button>
+                        <button class="btn btn-outline-light btn-sm" id="btn-draw-route" title="Добавить маршрут">
+                            <i class="bi bi-diagram-2"></i>
+                        </button>
+                        <button class="btn btn-outline-light btn-sm" id="btn-edit-mode" title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm me-2" id="btn-refresh">
+                        <i class="bi bi-arrow-clockwise"></i> Обновить
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" id="btn-toggle-sidebar">
+                        <i class="bi bi-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контейнер -->
+    <div id="main-container">
+        <!-- Боковая панель -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h5><i class="bi bi-info-circle"></i> Информация</h5>
+                <button class="btn-close btn-close-white" id="btn-close-sidebar"></button>
+            </div>
+            <div class="sidebar-content">
+                <!-- Статистика -->
+                <div class="stats-panel mb-3">
+                    <h6><i class="bi bi-bar-chart"></i> Статистика</h6>
+                    <div class="stat-item">
+                        <span class="stat-label">Узлов:</span>
+                        <span class="stat-value" id="stat-nodes">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Маршрутов:</span>
+                        <span class="stat-value" id="stat-vols">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Волокон:</span>
+                        <span class="stat-value" id="stat-fibers">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Связей:</span>
+                        <span class="stat-value" id="stat-links">0</span>
+                    </div>
+                </div>
+
+                <!-- Список узлов -->
+                <div class="list-panel" id="panel-nodes" style="display: none;">
+                    <h6><i class="bi bi-geo-alt"></i> Узлы связи</h6>
+                    <div class="list-group" id="nodes-list">
+                        <!-- Список будет заполнен динамически -->
+                    </div>
+                </div>
+
+                <!-- Список маршрутов -->
+                <div class="list-panel" id="panel-vols" style="display: none;">
+                    <h6><i class="bi bi-diagram-2"></i> Маршруты ВОЛС</h6>
+                    <div class="list-group" id="vols-list">
+                        <!-- Список будет заполнен динамически -->
+                    </div>
+                </div>
+
+                <!-- Список волокон -->
+                <div class="list-panel" id="panel-fibers" style="display: none;">
+                    <h6><i class="bi bi-lightning"></i> Волокна</h6>
+                    <div class="mb-2">
+                        <button class="btn btn-sm btn-primary w-100" id="btn-add-fiber">
+                            <i class="bi bi-plus-circle"></i> Добавить волокно
+                        </button>
+                    </div>
+                    <div class="list-group" id="fibers-list">
+                        <!-- Список будет заполнен динамически -->
+                    </div>
+                </div>
+
+                <!-- Список связей -->
+                <div class="list-panel" id="panel-links" style="display: none;">
+                    <h6><i class="bi bi-link-45deg"></i> Связи</h6>
+                    <div class="mb-2">
+                        <button class="btn btn-sm btn-primary w-100" id="btn-add-link">
+                            <i class="bi bi-plus-circle"></i> Добавить связь
+                        </button>
+                    </div>
+                    <div class="list-group" id="links-list">
+                        <!-- Список будет заполнен динамически -->
+                    </div>
+                </div>
+
+                <!-- Информация об объекте -->
+                <div class="info-panel" id="panel-info">
+                    <h6 id="info-title">Информация</h6>
+                    <div id="info-content">
+                        <p class="text-muted">Выберите объект на карте или в списке для просмотра информации</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Карта -->
+        <div id="map-container">
+            <div id="map"></div>
+            <!-- Легенда -->
+            <div class="map-legend">
+                <h6>Легенда</h6>
+                <div class="legend-item">
+                    <span class="legend-marker blue"></span>
+                    <span>Узлы связи</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-line blue"></span>
+                    <span>Маршруты ВОЛС</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания/редактирования узла -->
+    <div class="modal fade" id="nodeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nodeModalTitle">Новый узел</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="nodeForm">
+                        <input type="hidden" id="nodeId">
+                        <div class="mb-3">
+                            <label class="form-label">Название</label>
+                            <input type="text" class="form-control" id="nodeName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Тип узла</label>
+                            <select class="form-select" id="nodeType">
+                                <option value="muft">Муфта</option>
+                                <option value="cross">Кросс</option>
+                                <option value="bsp">БСП</option>
+                                <option value="terminal">Терминал</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Статус</label>
+                            <select class="form-select" id="nodeStatus">
+                                <option value="active">Активный</option>
+                                <option value="inactive">Неактивный</option>
+                                <option value="maintenance">На обслуживании</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Широта</label>
+                            <input type="number" step="any" class="form-control" id="nodeLat" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Долгота</label>
+                            <input type="number" step="any" class="form-control" id="nodeLon" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-node">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания/редактирования волокна -->
+    <div class="modal fade" id="fiberModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fiberModalTitle">Новое волокно</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="fiberForm">
+                        <input type="hidden" id="fiberId">
+                        <div class="mb-3">
+                            <label class="form-label">Название</label>
+                            <input type="text" class="form-control" id="fiberName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Тип кабеля</label>
+                            <input type="text" class="form-control" id="fiberCableType" placeholder="Например: ОКСН-М-24">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Количество волокон</label>
+                            <input type="number" class="form-control" id="fiberCount" min="1" value="1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Маршрут ВОЛС (ID)</label>
+                            <input type="number" class="form-control" id="fiberVolsId" placeholder="ID маршрута">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Статус</label>
+                            <select class="form-select" id="fiberStatus">
+                                <option value="active">Активное</option>
+                                <option value="spare">Резервное</option>
+                                <option value="damaged">Поврежденное</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-fiber">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания/редактирования связи -->
+    <div class="modal fade" id="linkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="linkModalTitle">Новая связь</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="linkForm">
+                        <input type="hidden" id="linkId">
+                        <div class="mb-3">
+                            <label class="form-label">Волокно (ID)</label>
+                            <input type="number" class="form-control" id="linkFiberId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Начальный узел (ID)</label>
+                            <input type="number" class="form-control" id="linkStartNodeId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Конечный узел (ID)</label>
+                            <input type="number" class="form-control" id="linkEndNodeId" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Порт начала</label>
+                                    <input type="number" class="form-control" id="linkStartPort" min="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Порт конца</label>
+                                    <input type="number" class="form-control" id="linkEndPort" min="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Емкость (Гбит/с)</label>
+                            <input type="number" step="0.01" class="form-control" id="linkCapacity" placeholder="Например: 10.0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Статус</label>
+                            <select class="form-select" id="linkStatus">
+                                <option value="active">Активная</option>
+                                <option value="spare">Резервная</option>
+                                <option value="unused">Неиспользуемая</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-link">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+﻿-- нициализация  для Vols GIS
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE TABLE IF NOT EXISTS nodes (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, description TEXT, node_type VARCHAR(50), status VARCHAR(50), geom GEOMETRY(Point, 4326) NOT NULL, meta_data JSONB, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_nodes_geom ON nodes USING GIST(geom);
+CREATE TABLE IF NOT EXISTS vols (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, description TEXT, start_node_id INTEGER REFERENCES nodes(id), end_node_id INTEGER REFERENCES nodes(id), path GEOMETRY(LineString, 4326) NOT NULL, length_km DECIMAL(10,2), status VARCHAR(50), meta_data JSONB, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_vols_path ON vols USING GIST(path);
+CREATE TABLE IF NOT EXISTS fibers (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, cable_type VARCHAR(100), fiber_count INTEGER, status VARCHAR(50), vols_id INTEGER REFERENCES vols(id), meta_data JSONB, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, fiber_id INTEGER REFERENCES fibers(id), start_node_id INTEGER REFERENCES nodes(id), end_node_id INTEGER REFERENCES nodes(id), start_port INTEGER, end_port INTEGER, status VARCHAR(50), capacity_gbps DECIMAL(10,2), meta_data JSONB, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS webmaps (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, description TEXT, visible_layers JSONB, center_geom GEOMETRY(Point, 4326), zoom_level INTEGER DEFAULT 8, permissions JSONB, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, role VARCHAR(50), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW());

@@ -1,0 +1,418 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.navbar {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-weight: 600;
+}
+
+.navbar-nav .nav-link {
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s;
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+.navbar-nav .nav-link.active {
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 4px;
+}
+
+.btn-group .btn.active {
+    background-color: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.3);
+}
+
+#main-container {
+    flex: 1;
+    position: relative;
+    margin-top: 56px;
+    height: calc(100vh - 56px);
+    display: flex;
+}
+
+/* Боковая панель */
+.sidebar {
+    width: 350px;
+    background: #2c3e50;
+    color: #ecf0f1;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    z-index: 900;
+    overflow-y: auto;
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+}
+
+.sidebar-header {
+    padding: 1rem;
+    background: #34495e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #1a252f;
+}
+
+.sidebar-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.sidebar-content {
+    padding: 1rem;
+    flex: 1;
+}
+
+/* Статистика */
+.stats-panel {
+    background: #34495e;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.stats-panel h6 {
+    margin-bottom: 0.75rem;
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #bdc3c7;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #3498db;
+}
+
+/* Списки */
+.list-panel {
+    margin-bottom: 1rem;
+}
+
+.list-panel h6 {
+    margin-bottom: 0.75rem;
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+.list-group {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.list-group-item {
+    background: #34495e;
+    border: 1px solid #1a252f;
+    color: #ecf0f1;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.list-group-item:hover {
+    background: #3d566e;
+    transform: translateX(4px);
+}
+
+.list-group-item.active {
+    background: #3498db;
+    border-color: #2980b9;
+}
+
+.list-group-item .item-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.list-group-item .item-meta {
+    font-size: 0.85rem;
+    color: #bdc3c7;
+}
+
+/* Информационная панель */
+.info-panel {
+    background: #34495e;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.info-panel h6 {
+    margin-bottom: 0.75rem;
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+.info-panel .info-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.info-panel .info-item:last-child {
+    border-bottom: none;
+}
+
+.info-panel .info-label {
+    color: #bdc3c7;
+    font-size: 0.9rem;
+}
+
+.info-panel .info-value {
+    color: #ecf0f1;
+    font-weight: 500;
+}
+
+/* Карта */
+#map-container {
+    flex: 1;
+    position: relative;
+    height: 100%;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* OpenLayers требует явного размера */
+.ol-viewport {
+    width: 100%;
+    height: 100%;
+}
+
+/* Стили для попапа OpenLayers */
+.ol-popup {
+    position: absolute;
+    background-color: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #cccccc;
+    bottom: 12px;
+    left: -50px;
+    min-width: 200px;
+}
+
+.ol-popup:after, .ol-popup:before {
+    top: 100%;
+    border: solid transparent;
+    content: " ";
+    height: 0;
+    width: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.ol-popup:after {
+    border-top-color: white;
+    border-width: 10px;
+    left: 48px;
+    margin-left: -10px;
+}
+
+.ol-popup:before {
+    border-top-color: #cccccc;
+    border-width: 11px;
+    left: 48px;
+    margin-left: -11px;
+}
+
+.ol-popup-closer {
+    text-decoration: none;
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #666;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.ol-popup-closer:hover {
+    color: #000;
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+}
+
+#popup-content {
+    margin: 0;
+}
+
+#popup-content h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+#popup-content .popup-info {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* Кастомные стили для OpenLayers контролов */
+.ol-control {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+}
+
+.ol-control:hover {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.ol-zoom {
+    top: 10px;
+    left: 10px;
+}
+
+.ol-attribution {
+    bottom: 5px;
+    right: 5px;
+    font-size: 11px;
+}
+
+/* Легенда карты */
+.map-legend {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 800;
+    min-width: 180px;
+}
+
+.map-legend h6 {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+.legend-marker.blue {
+    background: #3498db;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #3498db;
+}
+
+.legend-line {
+    width: 24px;
+    height: 3px;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+.legend-line.blue {
+    background: #3498db;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .sidebar {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        max-width: 350px;
+    }
+}
+
+/* Кастомные стили для Leaflet */
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+}
+
+.leaflet-popup-content {
+    margin: 1rem;
+}
+
+.leaflet-popup-content h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.leaflet-popup-content .popup-info {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Скроллбар */
+.sidebar-content::-webkit-scrollbar,
+.list-group::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track,
+.list-group::-webkit-scrollbar-track {
+    background: #1a252f;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb,
+.list-group::-webkit-scrollbar-thumb {
+    background: #34495e;
+    border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover,
+.list-group::-webkit-scrollbar-thumb:hover {
+    background: #3d566e;
+}

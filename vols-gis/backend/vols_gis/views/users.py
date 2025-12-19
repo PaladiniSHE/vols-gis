@@ -4,6 +4,7 @@ from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
 from ..models.users import User
 from ..schemas.users import UserCreate, UserUpdate, UserLogin
+from ..auth.decorators import require_auth, require_role
 import logging
 import traceback
 import hashlib
@@ -17,6 +18,7 @@ def hash_password(password: str) -> str:
 
 
 @view_config(route_name='api_users_list', request_method='GET')
+@require_auth
 def users_list(request):
     """Список всех пользователей"""
     try:
@@ -80,6 +82,7 @@ def users_list(request):
 
 
 @view_config(route_name='api_users_list', request_method='POST')
+@require_role('admin')
 def users_create(request):
     """Создание нового пользователя"""
     try:
@@ -260,6 +263,7 @@ def users_get(request):
 
 
 @view_config(route_name='api_users_get', request_method='PUT')
+@require_auth
 def users_update(request):
     """Обновление пользователя"""
     try:
@@ -317,6 +321,18 @@ def users_update(request):
             return Response(
                 json_body={'error': 'Validation error', 'message': str(e)},
                 status=400,
+                content_type='application/json'
+            )
+        
+        # Проверка прав: пользователь может редактировать только свой профиль (если не админ)
+        user_role = request.user.get('role', 'viewer')
+        if user_role != 'admin' and user_id != request.user.get('user_id'):
+            return Response(
+                json_body={
+                    'error': 'Forbidden',
+                    'message': 'Вы можете редактировать только свой профиль'
+                },
+                status=403,
                 content_type='application/json'
             )
         
@@ -400,6 +416,7 @@ def users_update(request):
 
 
 @view_config(route_name='api_users_get', request_method='DELETE')
+@require_role('admin')
 def users_delete(request):
     """Удаление пользователя"""
     try:

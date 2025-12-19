@@ -37,8 +37,26 @@ def nodes_list(request):
         
         logger.info('DB сессия получена, выполняем запрос')
         
+        # Параметры поиска и фильтрации
+        query = db.query(Node)
+        
+        # Фильтр по типу узла
+        node_type = request.params.get('node_type')
+        if node_type:
+            query = query.filter(Node.node_type == node_type)
+        
+        # Фильтр по статусу
+        status = request.params.get('status')
+        if status:
+            query = query.filter(Node.status == status)
+        
+        # Поиск по имени
+        search = request.params.get('search')
+        if search:
+            query = query.filter(Node.name.ilike(f'%{search}%'))
+        
         try:
-            nodes = db.query(Node).all()
+            nodes = query.all()
         except Exception as query_error:
             logger.error(f'Ошибка выполнения запроса: {query_error}')
             from pyramid.response import Response

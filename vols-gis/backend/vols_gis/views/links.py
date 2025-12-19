@@ -32,8 +32,40 @@ def links_list(request):
         
         logger.info('DB сессия получена, выполняем запрос')
         
+        # Параметры поиска и фильтрации
+        query = db.query(Link)
+        
+        # Фильтр по волокну
+        fiber_id = request.params.get('fiber_id')
+        if fiber_id:
+            try:
+                query = query.filter(Link.fiber_id == int(fiber_id))
+            except ValueError:
+                pass
+        
+        # Фильтр по начальному узлу
+        start_node_id = request.params.get('start_node_id')
+        if start_node_id:
+            try:
+                query = query.filter(Link.start_node_id == int(start_node_id))
+            except ValueError:
+                pass
+        
+        # Фильтр по конечному узлу
+        end_node_id = request.params.get('end_node_id')
+        if end_node_id:
+            try:
+                query = query.filter(Link.end_node_id == int(end_node_id))
+            except ValueError:
+                pass
+        
+        # Фильтр по статусу
+        status = request.params.get('status')
+        if status:
+            query = query.filter(Link.status == status)
+        
         try:
-            links = db.query(Link).all()
+            links = query.all()
         except Exception as query_error:
             logger.error(f'Ошибка выполнения запроса: {query_error}')
             from pyramid.response import Response

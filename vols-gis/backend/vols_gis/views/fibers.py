@@ -32,8 +32,29 @@ def fibers_list(request):
         
         logger.info('DB сессия получена, выполняем запрос')
         
+        # Параметры поиска и фильтрации
+        query = db.query(Fiber)
+        
+        # Фильтр по маршруту
+        vols_id = request.params.get('vols_id')
+        if vols_id:
+            try:
+                query = query.filter(Fiber.vols_id == int(vols_id))
+            except ValueError:
+                pass
+        
+        # Фильтр по статусу
+        status = request.params.get('status')
+        if status:
+            query = query.filter(Fiber.status == status)
+        
+        # Поиск по имени
+        search = request.params.get('search')
+        if search:
+            query = query.filter(Fiber.name.ilike(f'%{search}%'))
+        
         try:
-            fibers = db.query(Fiber).all()
+            fibers = query.all()
         except Exception as query_error:
             logger.error(f'Ошибка выполнения запроса: {query_error}')
             from pyramid.response import Response

@@ -35,8 +35,21 @@ def vols_list(request):
         
         logger.info('DB сессия получена, выполняем запрос')
         
+        # Параметры поиска и фильтрации
+        query = db.query(Vols)
+        
+        # Фильтр по статусу
+        status = request.params.get('status')
+        if status:
+            query = query.filter(Vols.status == status)
+        
+        # Поиск по имени
+        search = request.params.get('search')
+        if search:
+            query = query.filter(Vols.name.ilike(f'%{search}%'))
+        
         try:
-            vols_list = db.query(Vols).all()
+            vols_list = query.all()
         except Exception as query_error:
             logger.error(f'Ошибка выполнения запроса: {query_error}')
             from pyramid.response import Response

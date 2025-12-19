@@ -36,5 +36,20 @@ def includeme(config: Configurator):
     config.add_route('api_webmaps_list', '/api/webmaps')
     config.add_route('api_webmaps_get', '/api/webmaps/{id}')
     
+    # API: Auth
+    config.add_route('api_auth_login', '/api/auth/login')
+    config.add_route('api_auth_me', '/api/auth/me')
+    
+    # API: Export
+    config.add_route('api_export_nodes_geojson', '/api/export/nodes.geojson')
+    config.add_route('api_export_vols_geojson', '/api/export/vols.geojson')
+    config.add_route('api_export_nodes_csv', '/api/export/nodes.csv')
+    config.add_route('api_export_fibers_csv', '/api/export/fibers.csv')
+    config.add_route('api_export_all_json', '/api/export/all.json')
+    
+    # API: Stats
+    config.add_route('api_stats_dashboard', '/api/stats/dashboard')
+    config.add_route('api_stats_summary', '/api/stats/summary')
+    
     # Views для API
     config.scan('vols_gis.views')

@@ -28,5 +28,13 @@ def includeme(config: Configurator):
     config.add_route('api_links_get', '/api/links/{id}')
     config.add_route('api_links_search', '/api/links/search')
     
+    # API: Users
+    config.add_route('api_users_list', '/api/users')
+    config.add_route('api_users_get', '/api/users/{id}')
+    
+    # API: WebMaps
+    config.add_route('api_webmaps_list', '/api/webmaps')
+    config.add_route('api_webmaps_get', '/api/webmaps/{id}')
+    
     # Views для API
     config.scan('vols_gis.views')

@@ -1,0 +1,29 @@
+# Telegram Bot
+aiogram==3.4.1
+aiohttp==3.9.1
+
+# Database
+sqlalchemy==2.0.25
+aiosqlite==0.19.0
+alembic==1.13.1
+
+# AI Integration
+openai==1.12.0
+anthropic==0.18.1
+
+# Scheduler
+apscheduler==3.10.4
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Logging & Monitoring
+loguru==0.7.2
+
+# Date/Time
+pytz==2024.1
+
+# Charts (optional - for progress visualization)
+matplotlib==3.8.2

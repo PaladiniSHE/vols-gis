@@ -1,0 +1,39 @@
+from .inline import (
+    get_start_keyboard,
+    get_main_menu_keyboard,
+    get_gender_keyboard,
+    get_goal_keyboard,
+    get_fitness_level_keyboard,
+    get_training_location_keyboard,
+    get_diet_type_keyboard,
+    get_work_type_keyboard,
+    get_training_days_keyboard,
+    get_confirmation_keyboard,
+    get_workout_status_keyboard,
+    get_meal_keyboard,
+    get_rating_keyboard,
+    get_skip_keyboard,
+    get_yes_no_keyboard,
+    get_back_keyboard,
+    get_water_keyboard
+)
+
+__all__ = [
+    "get_start_keyboard",
+    "get_main_menu_keyboard",
+    "get_gender_keyboard",
+    "get_goal_keyboard",
+    "get_fitness_level_keyboard",
+    "get_training_location_keyboard",
+    "get_diet_type_keyboard",
+    "get_work_type_keyboard",
+    "get_training_days_keyboard",
+    "get_confirmation_keyboard",
+    "get_workout_status_keyboard",
+    "get_meal_keyboard",
+    "get_rating_keyboard",
+    "get_skip_keyboard",
+    "get_yes_no_keyboard",
+    "get_back_keyboard",
+    "get_water_keyboard"
+]

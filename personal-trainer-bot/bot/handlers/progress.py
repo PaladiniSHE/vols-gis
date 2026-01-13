@@ -89,10 +89,20 @@ async def process_weight(message: Message, state: FSMContext, session: AsyncSess
         )
         session.add(weight_log)
     
-    # Обновляем текущий вес в профиле
-    if user.profile:
-        old_weight = user.profile.current_weight
-        user.profile.current_weight = weight
+    # Загружаем и обновляем профиль
+    from database.models import UserProfile
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    old_weight = None
+    target_weight = None
+    
+    if profile:
+        old_weight = profile.current_weight
+        target_weight = profile.target_weight
+        profile.current_weight = weight
         
         if old_weight:
             diff = old_weight - weight
@@ -127,8 +137,8 @@ async def process_weight(message: Message, state: FSMContext, session: AsyncSess
             history_text += f"├ {log.date.strftime('%d.%m')}: {log.weight} кг\n"
     
     target_text = ""
-    if user.profile and user.profile.target_weight:
-        remaining = weight - user.profile.target_weight
+    if target_weight:
+        remaining = weight - target_weight
         if remaining > 0:
             target_text = f"\n🎯 До цели: {remaining:.1f} кг"
         else:
@@ -157,7 +167,12 @@ async def cmd_progress(message: Message, session: AsyncSession):
         await message.answer("Сначала пройди регистрацию! /start")
         return
     
-    profile = user.profile
+    # Загружаем профиль
+    from database.models import UserProfile
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
     
     # Получаем историю веса
     weight_result = await session.execute(

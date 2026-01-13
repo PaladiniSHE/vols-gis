@@ -303,31 +303,51 @@ async def process_health_conditions(message: Message, state: FSMContext, session
     # Получаем все данные
     data = await state.get_data()
     
-    # Обновляем профиль в БД
+    # Обновляем профиль в БД - используем отдельный запрос для профиля
     result = await session.execute(
         select(User).where(User.telegram_id == message.from_user.id)
     )
     user = result.scalar_one_or_none()
     
-    if user and user.profile:
-        profile = user.profile
-        profile.name = data.get("name")
-        profile.age = data.get("age")
-        profile.gender = data.get("gender")
-        profile.height = data.get("height")
-        profile.current_weight = data.get("current_weight")
-        profile.target_weight = data.get("target_weight")
-        profile.primary_goal = data.get("primary_goal")
-        profile.fitness_level = data.get("fitness_level")
-        profile.training_days_per_week = data.get("training_days_per_week")
-        profile.training_location = data.get("training_location")
-        profile.work_type = data.get("work_type")
-        profile.diet_type = data.get("diet_type")
-        profile.allergies = data.get("allergies", [])
-        profile.health_conditions = conditions
+    target_calories = None
+    target_protein = None
+    target_fat = None
+    target_carbs = None
+    target_water = None
+    
+    if user:
+        # Загружаем профиль отдельным запросом
+        from database.models import UserProfile
+        profile_result = await session.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+        profile = profile_result.scalar_one_or_none()
         
-        # Рассчитываем метрики
-        profile.calculate_metrics()
+        if profile:
+            profile.name = data.get("name")
+            profile.age = data.get("age")
+            profile.gender = data.get("gender")
+            profile.height = data.get("height")
+            profile.current_weight = data.get("current_weight")
+            profile.target_weight = data.get("target_weight")
+            profile.primary_goal = data.get("primary_goal")
+            profile.fitness_level = data.get("fitness_level")
+            profile.training_days_per_week = data.get("training_days_per_week")
+            profile.training_location = data.get("training_location")
+            profile.work_type = data.get("work_type")
+            profile.diet_type = data.get("diet_type")
+            profile.allergies = data.get("allergies", [])
+            profile.health_conditions = conditions
+            
+            # Рассчитываем метрики
+            profile.calculate_metrics()
+            
+            # Сохраняем значения до коммита
+            target_calories = profile.target_calories
+            target_protein = profile.target_protein
+            target_fat = profile.target_fat
+            target_carbs = profile.target_carbs
+            target_water = profile.target_water
         
         # Отмечаем онбординг завершённым
         user.is_onboarded = True
@@ -355,14 +375,14 @@ async def process_health_conditions(message: Message, state: FSMContext, session
         f"└ Цель: {goal_names.get(data.get('primary_goal', ''), '?')}\n\n"
     )
     
-    if user and user.profile:
+    if target_calories:
         summary += (
             f"📊 *Рассчитанные параметры:*\n"
-            f"├ Калории: {user.profile.target_calories} ккал/день\n"
-            f"├ Белки: {user.profile.target_protein} г\n"
-            f"├ Жиры: {user.profile.target_fat} г\n"
-            f"├ Углеводы: {user.profile.target_carbs} г\n"
-            f"└ Вода: {user.profile.target_water} л\n\n"
+            f"├ Калории: {target_calories} ккал/день\n"
+            f"├ Белки: {target_protein} г\n"
+            f"├ Жиры: {target_fat} г\n"
+            f"├ Углеводы: {target_carbs} г\n"
+            f"└ Вода: {target_water} л\n\n"
         )
     
     summary += (

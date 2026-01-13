@@ -26,9 +26,15 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext):
     user = result.scalar_one_or_none()
     
     if user and user.is_onboarded:
-        # Пользователь уже зарегистрирован
+        # Загружаем профиль отдельно
+        profile_result = await session.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+        profile = profile_result.scalar_one_or_none()
+        name = profile.name if profile else user.first_name
+        
         await message.answer(
-            f"С возвращением, {user.profile.name or user.first_name}! 👋\n\n"
+            f"С возвращением, {name or 'друг'}! 👋\n\n"
             "Рад снова тебя видеть! Что будем делать?",
             reply_markup=get_main_menu_keyboard()
         )

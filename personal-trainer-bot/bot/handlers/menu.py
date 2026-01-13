@@ -24,11 +24,20 @@ async def show_today_plan(callback: CallbackQuery, session: AsyncSession):
     )
     user = result.scalar_one_or_none()
     
-    if not user or not user.profile:
+    if not user:
         await callback.message.edit_text("Сначала пройди регистрацию!")
         return
     
-    profile = user.profile
+    # Загружаем профиль отдельно
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    if not profile:
+        await callback.message.edit_text("Сначала пройди регистрацию!")
+        return
+    
     today = date.today()
     weekday = today.strftime("%A")
     weekday_ru = {
@@ -115,7 +124,16 @@ async def show_water_menu(callback: CallbackQuery, session: AsyncSession):
     )
     user = result.scalar_one_or_none()
     
-    if not user or not user.profile:
+    if not user:
+        return
+    
+    # Загружаем профиль
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    if not profile:
         return
     
     # Получаем лог питания за сегодня
@@ -129,7 +147,7 @@ async def show_water_menu(callback: CallbackQuery, session: AsyncSession):
     nutrition_log = nutrition_result.scalar_one_or_none()
     
     current_water = nutrition_log.water_liters if nutrition_log else 0.0
-    target_water = user.profile.target_water or 2.5
+    target_water = profile.target_water or 2.5
     percent = min(100, int((current_water / target_water) * 100))
     
     # Визуализация прогресса
@@ -221,10 +239,17 @@ async def show_progress(callback: CallbackQuery, session: AsyncSession):
     )
     user = result.scalar_one_or_none()
     
-    if not user or not user.profile:
+    if not user:
         return
     
-    profile = user.profile
+    # Загружаем профиль
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    if not profile:
+        return
     
     text = (
         f"📊 *Твой прогресс*\n\n"

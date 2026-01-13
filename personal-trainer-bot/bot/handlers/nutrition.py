@@ -24,14 +24,24 @@ async def show_nutrition(callback: CallbackQuery, session: AsyncSession):
     )
     user = result.scalar_one_or_none()
     
-    if not user or not user.profile:
+    if not user:
         await callback.message.edit_text(
             "Сначала пройди регистрацию!",
             reply_markup=get_back_keyboard("menu")
         )
         return
     
-    profile = user.profile
+    # Загружаем профиль
+    from database.models import UserProfile
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    if not profile:
+        await callback.message.edit_text("Сначала пройди регистрацию!")
+        return
+    
     today = date.today()
     
     nutrition_text = (

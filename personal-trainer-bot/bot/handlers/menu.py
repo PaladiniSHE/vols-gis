@@ -9,7 +9,16 @@ from sqlalchemy import select
 from datetime import date
 
 from database.models import User, UserProfile, WorkoutLog, NutritionLog
-from bot.keyboards import get_main_menu_keyboard, get_water_keyboard, get_nav_keyboard, get_back_to_menu_keyboard
+from bot.keyboards import (
+    get_main_menu_keyboard, 
+    get_water_keyboard, 
+    get_nav_keyboard, 
+    get_back_to_menu_keyboard,
+    get_settings_keyboard,
+    get_timezone_keyboard,
+    get_notifications_keyboard,
+    get_time_keyboard
+)
 
 router = Router(name="menu")
 
@@ -272,13 +281,211 @@ async def show_settings(callback: CallbackQuery, session: AsyncSession):
     if not user:
         return
     
+    # Красивое отображение часового пояса
+    tz_names = {
+        "Europe/Moscow": "Москва (UTC+3)",
+        "Europe/Kaliningrad": "Калининград (UTC+2)",
+        "Europe/Samara": "Самара (UTC+4)",
+        "Asia/Yekaterinburg": "Екатеринбург (UTC+5)",
+        "Asia/Omsk": "Омск (UTC+6)",
+        "Asia/Krasnoyarsk": "Красноярск (UTC+7)",
+        "Asia/Irkutsk": "Иркутск (UTC+8)",
+        "Asia/Vladivostok": "Владивосток (UTC+10)",
+        "Europe/Kiev": "Киев (UTC+2)",
+        "Europe/Minsk": "Минск (UTC+3)",
+        "Asia/Almaty": "Алматы (UTC+6)",
+    }
+    tz_display = tz_names.get(user.timezone, user.timezone)
+    
     await callback.message.edit_text(
         f"⚙️ *Настройки*\n\n"
         f"🔔 Уведомления: {'✅ Вкл' if user.notifications_enabled else '❌ Выкл'}\n"
         f"⏰ Подъём: {user.wake_time}\n"
         f"🌙 Отход ко сну: {user.sleep_time}\n"
-        f"🌍 Часовой пояс: {user.timezone}\n\n"
-        f"Для изменения настроек напиши мне!",
+        f"🌍 Часовой пояс: {tz_display}\n\n"
+        f"Выбери, что изменить:",
+        reply_markup=get_settings_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "settings_timezone")
+async def show_timezone_settings(callback: CallbackQuery):
+    """Показать выбор часового пояса"""
+    await callback.answer()
+    
+    await callback.message.edit_text(
+        "🌍 *Выбор часового пояса*\n\n"
+        "Выбери свой часовой пояс для корректной работы напоминаний:",
+        reply_markup=get_timezone_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data.startswith("tz_"))
+async def set_timezone(callback: CallbackQuery, session: AsyncSession):
+    """Установить часовой пояс"""
+    timezone = callback.data.replace("tz_", "")
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        user.timezone = timezone
+        await session.commit()
+    
+    tz_names = {
+        "Europe/Moscow": "Москва (UTC+3)",
+        "Europe/Kaliningrad": "Калининград (UTC+2)",
+        "Europe/Samara": "Самара (UTC+4)",
+        "Asia/Yekaterinburg": "Екатеринбург (UTC+5)",
+        "Asia/Omsk": "Омск (UTC+6)",
+        "Asia/Krasnoyarsk": "Красноярск (UTC+7)",
+        "Asia/Irkutsk": "Иркутск (UTC+8)",
+        "Asia/Vladivostok": "Владивосток (UTC+10)",
+        "Europe/Kiev": "Киев (UTC+2)",
+        "Europe/Minsk": "Минск (UTC+3)",
+        "Asia/Almaty": "Алматы (UTC+6)",
+    }
+    
+    await callback.answer(f"✅ Часовой пояс установлен!")
+    
+    await callback.message.edit_text(
+        f"✅ *Часовой пояс изменён!*\n\n"
+        f"🌍 Новый часовой пояс: {tz_names.get(timezone, timezone)}\n\n"
+        f"Теперь напоминания будут приходить в правильное время.",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "settings_notifications")
+async def show_notifications_settings(callback: CallbackQuery, session: AsyncSession):
+    """Показать настройки уведомлений"""
+    await callback.answer()
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return
+    
+    status = "✅ Включены" if user.notifications_enabled else "❌ Выключены"
+    
+    await callback.message.edit_text(
+        f"🔔 *Настройки уведомлений*\n\n"
+        f"Текущий статус: {status}\n\n"
+        f"Уведомления включают:\n"
+        f"• 🌅 Утреннее приветствие\n"
+        f"• 🍽️ Напоминания о еде\n"
+        f"• 💧 Напоминания о воде\n"
+        f"• 🏋️ Напоминания о тренировке\n"
+        f"• 🌙 Вечерний итог дня",
+        reply_markup=get_notifications_keyboard(user.notifications_enabled),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data.in_({"notif_on", "notif_off"}))
+async def toggle_notifications(callback: CallbackQuery, session: AsyncSession):
+    """Включить/выключить уведомления"""
+    enable = callback.data == "notif_on"
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        user.notifications_enabled = enable
+        await session.commit()
+    
+    status = "включены ✅" if enable else "выключены ❌"
+    await callback.answer(f"Уведомления {status}")
+    
+    await callback.message.edit_text(
+        f"{'🔔' if enable else '🔕'} *Уведомления {status}*\n\n"
+        f"{'Теперь ты будешь получать напоминания!' if enable else 'Напоминания отключены. Ты можешь включить их обратно в любое время.'}",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "settings_wake")
+async def show_wake_time_settings(callback: CallbackQuery, session: AsyncSession):
+    """Показать настройку времени подъёма"""
+    await callback.answer()
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    current_time = user.wake_time if user else "07:00"
+    
+    await callback.message.edit_text(
+        f"⏰ *Время подъёма*\n\n"
+        f"Текущее время: {current_time}\n\n"
+        f"Выбери время, когда ты обычно просыпаешься:",
+        reply_markup=get_time_keyboard("wake"),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "settings_sleep")
+async def show_sleep_time_settings(callback: CallbackQuery, session: AsyncSession):
+    """Показать настройку времени сна"""
+    await callback.answer()
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    current_time = user.sleep_time if user else "23:00"
+    
+    await callback.message.edit_text(
+        f"🌙 *Время отхода ко сну*\n\n"
+        f"Текущее время: {current_time}\n\n"
+        f"Выбери время, когда ты обычно ложишься спать:",
+        reply_markup=get_time_keyboard("sleep"),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data.startswith("time_"))
+async def set_time(callback: CallbackQuery, session: AsyncSession):
+    """Установить время подъёма/сна"""
+    parts = callback.data.split("_")
+    time_type = parts[1]  # wake или sleep
+    time_value = parts[2]  # HH:MM
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        if time_type == "wake":
+            user.wake_time = time_value
+            label = "подъёма"
+            emoji = "⏰"
+        else:
+            user.sleep_time = time_value
+            label = "сна"
+            emoji = "🌙"
+        await session.commit()
+    
+    await callback.answer(f"✅ Время установлено!")
+    
+    await callback.message.edit_text(
+        f"{emoji} *Время {label} изменено!*\n\n"
+        f"Новое время: {time_value}\n\n"
+        f"Напоминания будут приходить с учётом этого времени.",
         reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )

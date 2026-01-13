@@ -243,10 +243,10 @@ async def workout_reschedule(callback: CallbackQuery):
     )
 
 
-@router.callback_query(WorkoutStates.waiting_workout_rating, F.data.startswith("effort_"))
+@router.callback_query(F.data.startswith("effort_"))
 async def process_workout_rating(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Обработка оценки тренировки"""
-    await callback.answer()
+    await callback.answer("💪 Записано!")
     
     rating = int(callback.data.replace("effort_", ""))
     

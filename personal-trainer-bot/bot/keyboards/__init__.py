@@ -19,7 +19,11 @@ from .inline import (
     get_nav_keyboard,
     get_back_to_menu_keyboard,
     get_workout_keyboard,
-    get_meal_status_keyboard
+    get_meal_status_keyboard,
+    get_settings_keyboard,
+    get_timezone_keyboard,
+    get_notifications_keyboard,
+    get_time_keyboard
 )
 
 __all__ = [
@@ -43,5 +47,9 @@ __all__ = [
     "get_nav_keyboard",
     "get_back_to_menu_keyboard",
     "get_workout_keyboard",
-    "get_meal_status_keyboard"
+    "get_meal_status_keyboard",
+    "get_settings_keyboard",
+    "get_timezone_keyboard",
+    "get_notifications_keyboard",
+    "get_time_keyboard"
 ]

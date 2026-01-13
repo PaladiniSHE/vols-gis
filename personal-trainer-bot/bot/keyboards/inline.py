@@ -241,6 +241,97 @@ def get_back_keyboard(callback: str = "back") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def get_settings_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура настроек"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🔔 Уведомления", callback_data="settings_notifications")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⏰ Время подъёма", callback_data="settings_wake"),
+        InlineKeyboardButton(text="🌙 Время сна", callback_data="settings_sleep")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🌍 Часовой пояс", callback_data="settings_timezone")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+    )
+    return builder.as_markup()
+
+
+def get_timezone_keyboard() -> InlineKeyboardMarkup:
+    """Выбор часового пояса"""
+    builder = InlineKeyboardBuilder()
+    timezones = [
+        ("🇷🇺 Калининград (UTC+2)", "Europe/Kaliningrad"),
+        ("🇷🇺 Москва (UTC+3)", "Europe/Moscow"),
+        ("🇷🇺 Самара (UTC+4)", "Europe/Samara"),
+        ("🇷🇺 Екатеринбург (UTC+5)", "Asia/Yekaterinburg"),
+        ("🇷🇺 Омск (UTC+6)", "Asia/Omsk"),
+        ("🇷🇺 Красноярск (UTC+7)", "Asia/Krasnoyarsk"),
+        ("🇷🇺 Иркутск (UTC+8)", "Asia/Irkutsk"),
+        ("🇷🇺 Владивосток (UTC+10)", "Asia/Vladivostok"),
+        ("🇺🇦 Киев (UTC+2)", "Europe/Kiev"),
+        ("🇧🇾 Минск (UTC+3)", "Europe/Minsk"),
+        ("🇰🇿 Алматы (UTC+6)", "Asia/Almaty"),
+    ]
+    
+    for name, tz in timezones:
+        builder.row(
+            InlineKeyboardButton(text=name, callback_data=f"tz_{tz}")
+        )
+    
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="settings")
+    )
+    return builder.as_markup()
+
+
+def get_notifications_keyboard(enabled: bool) -> InlineKeyboardMarkup:
+    """Клавиатура настройки уведомлений"""
+    builder = InlineKeyboardBuilder()
+    
+    if enabled:
+        builder.row(
+            InlineKeyboardButton(text="🔕 Выключить уведомления", callback_data="notif_off")
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(text="🔔 Включить уведомления", callback_data="notif_on")
+        )
+    
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="settings")
+    )
+    return builder.as_markup()
+
+
+def get_time_keyboard(time_type: str) -> InlineKeyboardMarkup:
+    """Клавиатура выбора времени"""
+    builder = InlineKeyboardBuilder()
+    
+    if time_type == "wake":
+        times = ["05:00", "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00"]
+    else:  # sleep
+        times = ["21:00", "21:30", "22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00"]
+    
+    # По 3 кнопки в ряд
+    row = []
+    for i, t in enumerate(times):
+        row.append(InlineKeyboardButton(text=t, callback_data=f"time_{time_type}_{t}"))
+        if len(row) == 3:
+            builder.row(*row)
+            row = []
+    if row:
+        builder.row(*row)
+    
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="settings")
+    )
+    return builder.as_markup()
+
+
 def get_water_keyboard() -> InlineKeyboardMarkup:
     """Добавление воды"""
     builder = InlineKeyboardBuilder()

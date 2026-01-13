@@ -10,7 +10,7 @@ from sqlalchemy import select
 from datetime import date
 
 from database.models import User, WeightLog
-from bot.keyboards import get_main_menu_keyboard, get_back_keyboard
+from bot.keyboards import get_main_menu_keyboard, get_back_keyboard, get_back_to_menu_keyboard
 from bot.states import ProgressStates
 
 router = Router(name="progress")
@@ -150,7 +150,7 @@ async def process_weight(message: Message, state: FSMContext, session: AsyncSess
         f"{diff_text}"
         f"{target_text}"
         f"{history_text}",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -214,6 +214,6 @@ async def cmd_progress(message: Message, session: AsyncSession):
     
     await message.answer(
         text,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )

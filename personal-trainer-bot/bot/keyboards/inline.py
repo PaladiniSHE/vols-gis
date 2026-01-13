@@ -254,6 +254,78 @@ def get_water_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🧴 1л", callback_data="water_1000")
     )
     builder.row(
-        InlineKeyboardButton(text="📊 Статистика за день", callback_data="water_stats")
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+    )
+    return builder.as_markup()
+
+
+def get_nav_keyboard(current: str = None) -> InlineKeyboardMarkup:
+    """Навигационная клавиатура с подсветкой текущего раздела"""
+    builder = InlineKeyboardBuilder()
+    
+    # Основные разделы
+    today_text = "📅 Сегодня" if current != "today" else "📅 • Сегодня •"
+    workout_text = "🏋️ Тренировка" if current != "workout" else "🏋️ • Тренировка •"
+    meal_text = "🍽️ Питание" if current != "meal" else "🍽️ • Питание •"
+    
+    builder.row(
+        InlineKeyboardButton(text=today_text, callback_data="today_plan")
+    )
+    builder.row(
+        InlineKeyboardButton(text=workout_text, callback_data="workout"),
+        InlineKeyboardButton(text=meal_text, callback_data="nutrition")
+    )
+    builder.row(
+        InlineKeyboardButton(text="💧 Вода", callback_data="water"),
+        InlineKeyboardButton(text="⚖️ Вес", callback_data="weight")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📊 Прогресс", callback_data="progress"),
+        InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")
+    )
+    return builder.as_markup()
+
+
+def get_back_to_menu_keyboard() -> InlineKeyboardMarkup:
+    """Кнопка возврата в меню"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="main_menu")
+    )
+    return builder.as_markup()
+
+
+def get_workout_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура тренировки"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Выполнено", callback_data="workout_completed")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⚡ Частично", callback_data="workout_partial"),
+        InlineKeyboardButton(text="❌ Пропущено", callback_data="workout_skipped")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔄 Перенести", callback_data="workout_reschedule")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+    )
+    return builder.as_markup()
+
+
+def get_meal_status_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура статуса приёма пищи"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ По плану", callback_data="meal_on_plan"),
+        InlineKeyboardButton(text="⚡ С изменениями", callback_data="meal_modified")
+    )
+    builder.row(
+        InlineKeyboardButton(text="❌ Пропустил", callback_data="meal_skipped"),
+        InlineKeyboardButton(text="🍕 Срыв", callback_data="meal_cheat")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
     )
     return builder.as_markup()

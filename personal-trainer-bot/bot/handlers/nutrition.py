@@ -9,7 +9,7 @@ from sqlalchemy import select
 from datetime import date
 
 from database.models import User, NutritionLog
-from bot.keyboards import get_main_menu_keyboard, get_meal_keyboard, get_back_keyboard
+from bot.keyboards import get_main_menu_keyboard, get_meal_keyboard, get_back_keyboard, get_meal_status_keyboard, get_back_to_menu_keyboard
 
 router = Router(name="nutrition")
 
@@ -83,7 +83,7 @@ async def show_nutrition(callback: CallbackQuery, session: AsyncSession):
     
     await callback.message.edit_text(
         nutrition_text,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_meal_status_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -172,6 +172,6 @@ async def process_meal(callback: CallbackQuery, session: AsyncSession):
     
     await callback.message.edit_text(
         messages.get(meal_status, "Записано!"),
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )

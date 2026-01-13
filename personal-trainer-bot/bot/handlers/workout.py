@@ -14,7 +14,9 @@ from bot.keyboards import (
     get_main_menu_keyboard,
     get_workout_status_keyboard,
     get_rating_keyboard,
-    get_back_keyboard
+    get_back_keyboard,
+    get_workout_keyboard,
+    get_back_to_menu_keyboard
 )
 from bot.states import WorkoutStates
 
@@ -89,7 +91,7 @@ async def show_workout(callback: CallbackQuery, session: AsyncSession):
     
     await callback.message.edit_text(
         workout_text,
-        reply_markup=get_workout_status_keyboard(),
+        reply_markup=get_workout_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -186,7 +188,7 @@ async def workout_partial(callback: CallbackQuery, session: AsyncSession):
         "Главное, что ты не пропустил день полностью.\n"
         "Любое движение лучше, чем ничего! 💪\n\n"
         "Завтра продолжим!",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -222,7 +224,7 @@ async def workout_skipped(callback: CallbackQuery, session: AsyncSession):
         "Бывают дни, когда отдых важнее.\n\n"
         "Главное — не пропускать два дня подряд!\n"
         "Завтра вернёмся в строй! 💪",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -236,7 +238,7 @@ async def workout_reschedule(callback: CallbackQuery):
         "📅 *Перенос тренировки*\n\n"
         "Хорошо, перенесём тренировку на завтра.\n"
         "Не забудь выделить время! ⏰",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -285,6 +287,6 @@ async def process_workout_rating(callback: CallbackQuery, state: FSMContext, ses
         f"Нагрузка: {rating}/10\n\n"
         f"{feedback}\n\n"
         f"Не забудь поесть в ближайшие 30-60 минут! 🍽️",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )

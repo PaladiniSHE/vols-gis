@@ -9,9 +9,39 @@ from sqlalchemy import select
 from datetime import date
 
 from database.models import User, UserProfile, WorkoutLog, NutritionLog
-from bot.keyboards import get_main_menu_keyboard, get_water_keyboard
+from bot.keyboards import get_main_menu_keyboard, get_water_keyboard, get_nav_keyboard, get_back_to_menu_keyboard
 
 router = Router(name="menu")
+
+
+@router.callback_query(F.data == "main_menu")
+async def show_main_menu(callback: CallbackQuery, session: AsyncSession):
+    """Показать главное меню"""
+    await callback.answer()
+    
+    result = await session.execute(
+        select(User).where(User.telegram_id == callback.from_user.id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        await callback.message.edit_text("Сначала пройди регистрацию! /start")
+        return
+    
+    # Загружаем профиль
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    
+    name = profile.name if profile else user.first_name or "друг"
+    
+    await callback.message.edit_text(
+        f"👋 {name}, выбери раздел:\n\n"
+        f"🔥 Streak: {user.streak_days} дней\n"
+        f"💪 Тренировок: {user.total_workouts}",
+        reply_markup=get_nav_keyboard()
+    )
 
 
 @router.callback_query(F.data == "today_plan")
@@ -79,13 +109,12 @@ async def show_today_plan(callback: CallbackQuery, session: AsyncSession):
         f"├ Жиры: {profile.target_fat} г\n"
         f"└ Углеводы: {profile.target_carbs} г\n\n"
         f"💧 *ВОДА*: {water_status} / {profile.target_water} л\n\n"
-        f"🔥 Streak: {user.streak_days} дней\n\n"
-        "Выбери действие:"
+        f"🔥 Streak: {user.streak_days} дней"
     )
     
     await callback.message.edit_text(
         text,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_nav_keyboard("today"),
         parse_mode="Markdown"
     )
 
@@ -167,12 +196,6 @@ async def show_water_menu(callback: CallbackQuery, session: AsyncSession):
 @router.callback_query(F.data.startswith("water_"))
 async def add_water(callback: CallbackQuery, session: AsyncSession):
     """Добавить воду"""
-    if callback.data == "water_stats":
-        await show_water_menu(callback, session)
-        return
-    
-    await callback.answer("💧 Записано!")
-    
     amount = int(callback.data.replace("water_", ""))  # в мл
     
     result = await session.execute(
@@ -182,6 +205,13 @@ async def add_water(callback: CallbackQuery, session: AsyncSession):
     
     if not user:
         return
+    
+    # Загружаем профиль
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    target_water = profile.target_water if profile else 2.5
     
     # Получаем или создаём лог питания за сегодня
     today = date.today()
@@ -200,8 +230,33 @@ async def add_water(callback: CallbackQuery, session: AsyncSession):
     nutrition_log.water_liters = (nutrition_log.water_liters or 0) + (amount / 1000)
     await session.commit()
     
-    # Обновляем сообщение
-    await show_water_menu(callback, session)
+    # Показываем обновлённый статус
+    current_water = nutrition_log.water_liters
+    percent = min(100, int((current_water / target_water) * 100))
+    filled = int(percent / 10)
+    progress_bar = "█" * filled + "░" * (10 - filled)
+    
+    # Мотивационное сообщение
+    if percent >= 100:
+        motivation = "🎉 Норма выполнена! Отлично!"
+    elif percent >= 75:
+        motivation = "💪 Почти у цели!"
+    elif percent >= 50:
+        motivation = "👍 Больше половины!"
+    else:
+        motivation = "💧 Продолжай пить воду!"
+    
+    await callback.answer(f"💧 +{amount}мл добавлено!")
+    
+    await callback.message.edit_text(
+        f"💧 *Вода за сегодня*\n\n"
+        f"Выпито: *{current_water:.1f}* / {target_water:.1f} л\n"
+        f"[{progress_bar}] {percent}%\n\n"
+        f"{motivation}\n\n"
+        f"Добавить ещё:",
+        reply_markup=get_water_keyboard(),
+        parse_mode="Markdown"
+    )
 
 
 @router.callback_query(F.data == "settings")
@@ -224,7 +279,7 @@ async def show_settings(callback: CallbackQuery, session: AsyncSession):
         f"🌙 Отход ко сну: {user.sleep_time}\n"
         f"🌍 Часовой пояс: {user.timezone}\n\n"
         f"Для изменения настроек напиши мне!",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -276,6 +331,6 @@ async def show_progress(callback: CallbackQuery, session: AsyncSession):
     
     await callback.message.edit_text(
         text,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_back_to_menu_keyboard(),
         parse_mode="Markdown"
     )

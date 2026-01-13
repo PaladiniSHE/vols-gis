@@ -15,7 +15,11 @@ from .inline import (
     get_skip_keyboard,
     get_yes_no_keyboard,
     get_back_keyboard,
-    get_water_keyboard
+    get_water_keyboard,
+    get_nav_keyboard,
+    get_back_to_menu_keyboard,
+    get_workout_keyboard,
+    get_meal_status_keyboard
 )
 
 __all__ = [
@@ -35,5 +39,9 @@ __all__ = [
     "get_skip_keyboard",
     "get_yes_no_keyboard",
     "get_back_keyboard",
-    "get_water_keyboard"
+    "get_water_keyboard",
+    "get_nav_keyboard",
+    "get_back_to_menu_keyboard",
+    "get_workout_keyboard",
+    "get_meal_status_keyboard"
 ]

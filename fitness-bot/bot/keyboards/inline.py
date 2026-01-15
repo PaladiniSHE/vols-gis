@@ -215,7 +215,7 @@ class InlineKeyboards:
             InlineKeyboardButton(text="✏️ Другое", callback_data="portion:custom")
         )
         builder.row(
-            InlineKeyboardButton(text="◀️ Назад", callback_data="food:add")
+            InlineKeyboardButton(text="◀️ Назад", callback_data="menu:food")
         )
         
         return builder.as_markup()
@@ -365,10 +365,15 @@ class InlineKeyboards:
             name = reminder_names.get(r.reminder_type, "⏰")
             time_str = r.time.strftime("%H:%M")
             
+            # Кнопка включения/выключения и изменения времени
             builder.row(
                 InlineKeyboardButton(
                     text=f"{status} {name} {time_str}",
                     callback_data=f"reminder:toggle:{r.id}"
+                ),
+                InlineKeyboardButton(
+                    text="⏱️",
+                    callback_data=f"reminder:edit:{r.id}"
                 )
             )
         
@@ -416,7 +421,35 @@ class InlineKeyboards:
         
         builder.row(
             InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"food:confirm_delete:{entry_id}"),
-            InlineKeyboardButton(text="❌ Отмена", callback_data="menu:food")
+            InlineKeyboardButton(text="❌ Отмена", callback_data="food:daily_stats")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def daily_food_entries(entries: list) -> InlineKeyboardMarkup:
+        """Список записей за день с кнопками удаления"""
+        builder = InlineKeyboardBuilder()
+        
+        # Показываем последние 10 записей с возможностью удаления
+        for entry in entries[-10:]:
+            food_name = entry.food.name if entry.food else entry.custom_food_name or "Продукт"
+            # Обрезаем длинные названия
+            if len(food_name) > 20:
+                food_name = food_name[:17] + "..."
+            
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"🗑️ {food_name} ({int(entry.calories)} ккал)",
+                    callback_data=f"food:delete:{entry.id}"
+                )
+            )
+        
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад к питанию", callback_data="menu:food")
+        )
+        builder.row(
+            InlineKeyboardButton(text="🏠 В главное меню", callback_data="menu:main")
         )
         
         return builder.as_markup()
@@ -438,6 +471,43 @@ class InlineKeyboards:
         builder.row(
             InlineKeyboardButton(text="🔍 Искать в базе", callback_data="food:search"),
             InlineKeyboardButton(text="◀️ Назад", callback_data="food:add")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def settings_menu(notifications_enabled: bool = True) -> InlineKeyboardMarkup:
+        """Меню настроек"""
+        builder = InlineKeyboardBuilder()
+        
+        notif_text = "🔔 Выключить уведомления" if notifications_enabled else "🔔 Включить уведомления"
+        
+        builder.row(
+            InlineKeyboardButton(text=notif_text, callback_data="settings:toggle_notifications")
+        )
+        builder.row(
+            InlineKeyboardButton(text="🌍 Изменить часовой пояс", callback_data="settings:timezone")
+        )
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="menu:main")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def timezone_select() -> InlineKeyboardMarkup:
+        """Выбор часового пояса"""
+        from bot.utils import POPULAR_TIMEZONES
+        
+        builder = InlineKeyboardBuilder()
+        
+        for tz_code, tz_name in POPULAR_TIMEZONES:
+            builder.row(
+                InlineKeyboardButton(text=tz_name, callback_data=f"tz:{tz_code}")
+            )
+        
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="menu:settings")
         )
         
         return builder.as_markup()

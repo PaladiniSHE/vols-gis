@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.states import FoodStates
 from bot.config import Constants
-from bot.utils import create_progress_bar
+from bot.utils import create_progress_bar, get_user_date
 from core.database import async_session
 from services.user_service import UserService
 from services.food_service import FoodService
@@ -40,7 +40,7 @@ async def callback_food_menu(callback: CallbackQuery, state: FSMContext):
             await callback.answer("Сначала настройте профиль с помощью /start")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         daily = await stats_service.get_daily_summary(user.id, today)
         
         cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
@@ -81,7 +81,7 @@ async def show_food_menu(message: Message):
             await message.answer("Сначала настройте профиль с помощью /start")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         daily = await stats_service.get_daily_summary(user.id, today)
         
         cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
@@ -127,7 +127,7 @@ async def callback_select_meal(callback: CallbackQuery, state: FSMContext):
             return
         
         # Получаем записи за этот прием пищи
-        today = date.today()
+        today = get_user_date(user.timezone)
         meal_totals = await food_service.get_meal_totals(user.id, today, meal_type)
         
         text = f"""
@@ -247,7 +247,7 @@ async def process_custom_portion(message: Message, state: FSMContext):
             
             # Обновляем серию
             await user_service.update_streak(message.from_user.id)
-            await user_service.add_xp(message.from_user.id, 10)
+            await user_service.add_xp(message.from_user.id, Constants.XP_LOG_FOOD)
             
             meal_name = Constants.MEAL_TYPES.get(meal_type, {}).get("name", "Прием пищи")
             
@@ -261,7 +261,7 @@ async def process_custom_portion(message: Message, state: FSMContext):
 ├ 🧈 Жиры: {entry.fat:.1f}г
 └ 🍞 Углеводы: {entry.carbs:.1f}г
 
-+10 XP ⭐
++{Constants.XP_LOG_FOOD} XP ⭐
 """
             
             await message.answer(
@@ -298,7 +298,7 @@ async def save_food_entry(callback: CallbackQuery, state: FSMContext, portion: i
         
         # Обновляем серию и XP
         await user_service.update_streak(callback.from_user.id)
-        await user_service.add_xp(callback.from_user.id, 10)
+        await user_service.add_xp(callback.from_user.id, Constants.XP_LOG_FOOD)
         
         meal_name = Constants.MEAL_TYPES.get(meal_type, {}).get("name", "Прием пищи")
         
@@ -312,7 +312,7 @@ async def save_food_entry(callback: CallbackQuery, state: FSMContext, portion: i
 ├ 🧈 Жиры: {entry.fat:.1f}г
 └ 🍞 Углеводы: {entry.carbs:.1f}г
 
-+10 XP ⭐
++{Constants.XP_LOG_FOOD} XP ⭐
 """
         
         await callback.message.edit_text(
@@ -496,12 +496,14 @@ async def callback_recent_foods(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "food:daily_stats")
 async def callback_daily_food_stats(callback: CallbackQuery):
     """Статистика питания за день"""
+    from bot.utils import get_user_date
+    
     async with async_session() as session:
         user_service = UserService(session)
         food_service = FoodService(session)
         
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-        today = date.today()
+        today = get_user_date(user.timezone)
         
         # Получаем записи по каждому приему пищи
         text = f"📊 *Питание за {today.strftime('%d.%m.%Y')}*\n\n"
@@ -510,6 +512,7 @@ async def callback_daily_food_stats(callback: CallbackQuery):
         total_p = 0
         total_f = 0
         total_c = 0
+        all_entries = []
         
         for meal_id, meal_data in Constants.MEAL_TYPES.items():
             meal_totals = await food_service.get_meal_totals(user.id, today, meal_id)
@@ -521,6 +524,7 @@ async def callback_daily_food_stats(callback: CallbackQuery):
                 for entry in entries:
                     food_name = entry.food.name if entry.food else entry.custom_food_name or "Продукт"
                     text += f"   • {food_name} ({int(entry.portion_size)}г) - {int(entry.calories)} ккал\n"
+                    all_entries.append(entry)
                 
                 text += "\n"
                 
@@ -538,10 +542,13 @@ async def callback_daily_food_stats(callback: CallbackQuery):
 └ 🍞 Углеводы: {total_c:.0f}г / {int(user.daily_carbs or 0)}г
 """
         
+        if all_entries:
+            text += "\n_Нажми 🗑️ для удаления записи_"
+        
         await callback.message.edit_text(
             text,
             parse_mode="Markdown",
-            reply_markup=InlineKeyboards.back_to_menu()
+            reply_markup=InlineKeyboards.daily_food_entries(all_entries)
         )
     
     await callback.answer()

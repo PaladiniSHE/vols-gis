@@ -317,25 +317,116 @@ async def process_edit_weight(message: Message, state: FSMContext):
 @router.callback_query(F.data == "menu:settings")
 async def callback_settings(callback: CallbackQuery):
     """Настройки"""
+    from bot.utils import get_timezone_display_name
+    
     async with async_session() as session:
         user_service = UserService(session)
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
         
         notif_status = "✅ Включены" if user.notifications_enabled else "❌ Выключены"
+        tz_name = get_timezone_display_name(user.timezone)
         
         text = f"""
 ⚙️ *Настройки*
 
 🔔 Уведомления: {notif_status}
-🌍 Часовой пояс: {user.timezone}
+🌍 Часовой пояс: {tz_name}
 
-Функции настроек в разработке...
+Нажми на настройку для изменения:
 """
         
         await callback.message.edit_text(
             text,
             parse_mode="Markdown",
-            reply_markup=InlineKeyboards.back_to_menu()
+            reply_markup=InlineKeyboards.settings_menu(user.notifications_enabled)
         )
     
     await callback.answer()
+
+
+@router.callback_query(F.data == "settings:toggle_notifications")
+async def callback_toggle_notifications(callback: CallbackQuery):
+    """Переключить уведомления"""
+    from bot.utils import get_timezone_display_name
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        
+        # Переключаем
+        user.notifications_enabled = not user.notifications_enabled
+        await session.commit()
+        
+        notif_status = "✅ Включены" if user.notifications_enabled else "❌ Выключены"
+        tz_name = get_timezone_display_name(user.timezone)
+        
+        text = f"""
+⚙️ *Настройки*
+
+🔔 Уведомления: {notif_status}
+🌍 Часовой пояс: {tz_name}
+
+Нажми на настройку для изменения:
+"""
+        
+        await callback.message.edit_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboards.settings_menu(user.notifications_enabled)
+        )
+    
+    await callback.answer(f"Уведомления {notif_status.lower()}")
+
+
+@router.callback_query(F.data == "settings:timezone")
+async def callback_change_timezone(callback: CallbackQuery):
+    """Выбрать часовой пояс"""
+    text = """
+🌍 *Выбери часовой пояс*
+
+Выбери свой регион:
+"""
+    
+    await callback.message.edit_text(
+        text,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboards.timezone_select()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("tz:"))
+async def callback_select_timezone(callback: CallbackQuery):
+    """Установить часовой пояс"""
+    from bot.utils import get_timezone_display_name
+    
+    timezone = callback.data.split(":", 1)[1]
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        
+        user.timezone = timezone
+        await session.commit()
+        
+        tz_name = get_timezone_display_name(timezone)
+        notif_status = "✅ Включены" if user.notifications_enabled else "❌ Выключены"
+        
+        text = f"""
+⚙️ *Настройки*
+
+✅ Часовой пояс изменен!
+
+🔔 Уведомления: {notif_status}
+🌍 Часовой пояс: {tz_name}
+
+Нажми на настройку для изменения:
+"""
+        
+        await callback.message.edit_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboards.settings_menu(user.notifications_enabled)
+        )
+    
+    await callback.answer(f"Часовой пояс: {timezone}")

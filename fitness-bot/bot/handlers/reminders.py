@@ -206,3 +206,116 @@ async def callback_disable_all_reminders(callback: CallbackQuery):
         )
     
     await callback.answer("Все напоминания выключены ❌")
+
+
+@router.callback_query(F.data.startswith("reminder:edit:"))
+async def callback_edit_reminder_time(callback: CallbackQuery, state: FSMContext):
+    """Начать редактирование времени напоминания"""
+    reminder_id = int(callback.data.split(":")[2])
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        reminder_service = ReminderService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        if not user:
+            await callback.answer("Ошибка")
+            return
+        
+        reminder = await reminder_service.get_reminder(reminder_id)
+        
+        if not reminder or reminder.user_id != user.id:
+            await callback.answer("Напоминание не найдено")
+            return
+        
+        reminder_names = {
+            ReminderType.MEAL_BREAKFAST: "🍳 Завтрак",
+            ReminderType.MEAL_LUNCH: "🍜 Обед",
+            ReminderType.MEAL_DINNER: "🍽️ Ужин",
+            ReminderType.WATER: "💧 Вода",
+            ReminderType.WEIGHT: "⚖️ Взвеситься",
+            ReminderType.WORKOUT: "🏋️ Тренировка",
+        }
+        
+        name = reminder_names.get(reminder.reminder_type, "Напоминание")
+        
+        await state.update_data(editing_reminder_id=reminder_id)
+        
+        await callback.message.edit_text(
+            f"⏰ *Изменение времени: {name}*\n\n"
+            f"Текущее время: *{reminder.time.strftime('%H:%M')}*\n\n"
+            "Введи новое время в формате ЧЧ:ММ\n"
+            "Например: `08:30` или `19:00`\n\n"
+            "_Или отправь /cancel для отмены_",
+            parse_mode="Markdown"
+        )
+        await state.set_state(ReminderStates.entering_time)
+    
+    await callback.answer()
+
+
+@router.message(ReminderStates.entering_time)
+async def process_new_reminder_time(message: Message, state: FSMContext):
+    """Обработка нового времени напоминания"""
+    if message.text == "/cancel":
+        await state.clear()
+        await message.answer("❌ Отменено", reply_markup=InlineKeyboards.back_to_menu())
+        return
+    
+    # Парсим время
+    time_text = message.text.strip()
+    
+    try:
+        # Поддерживаем форматы: HH:MM, H:MM, HH.MM
+        time_text = time_text.replace(".", ":")
+        
+        if ":" not in time_text:
+            raise ValueError("Invalid format")
+        
+        parts = time_text.split(":")
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        
+        if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+            raise ValueError("Invalid time")
+        
+        new_time = time(hours, minutes)
+        
+    except (ValueError, IndexError):
+        await message.answer(
+            "⚠️ Неверный формат времени.\n\n"
+            "Введи время в формате ЧЧ:ММ\n"
+            "Например: `08:30` или `19:00`",
+            parse_mode="Markdown"
+        )
+        return
+    
+    # Обновляем напоминание
+    data = await state.get_data()
+    reminder_id = data.get("editing_reminder_id")
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        reminder_service = ReminderService(session)
+        
+        user = await user_service.get_user_by_telegram_id(message.from_user.id)
+        
+        reminder = await reminder_service.update_reminder_time(reminder_id, new_time)
+        
+        if reminder:
+            # Показываем обновленный список
+            reminders = await reminder_service.get_user_reminders(user.id)
+            text = "✅ *Время изменено!*\n\n" + await format_reminders_text(reminders)
+            
+            await message.answer(
+                text,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboards.reminders_menu(reminders)
+            )
+        else:
+            await message.answer(
+                "❌ Ошибка при обновлении времени",
+                reply_markup=InlineKeyboards.back_to_menu()
+            )
+    
+    await state.clear()

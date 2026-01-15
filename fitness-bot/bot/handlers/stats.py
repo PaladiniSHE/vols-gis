@@ -8,7 +8,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.inline import InlineKeyboards
-from bot.utils import create_progress_bar, create_water_bar
+from bot.utils import create_progress_bar, create_water_bar, get_user_date
 from core.database import async_session
 from services.user_service import UserService
 from services.stats_service import StatsService
@@ -57,7 +57,7 @@ async def callback_stats_today(callback: CallbackQuery):
             await callback.answer("Сначала настройте профиль")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         daily = await stats_service.get_daily_summary(user.id, today)
         
         # Прогресс-бары (length=10 для более компактного отображения)

@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.keyboards.reply import ReplyKeyboards
 from bot.states import OnboardingStates
-from bot.utils import create_progress_bar, create_water_bar
+from bot.utils import create_progress_bar, create_water_bar, get_user_date
 from core.database import async_session
 from services.user_service import UserService
 from services.stats_service import StatsService
@@ -65,10 +65,9 @@ async def cmd_start(message: Message, state: FSMContext):
 
 async def show_main_menu(message: Message, user, session):
     """Показать главное меню с текущей статистикой"""
-    from datetime import date
-    
     stats_service = StatsService(session)
-    daily = await stats_service.get_daily_summary(user.id, date.today())
+    today = get_user_date(user.timezone)
+    daily = await stats_service.get_daily_summary(user.id, today)
     
     # Формируем текст
     cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
@@ -161,8 +160,8 @@ async def callback_main_menu(callback: CallbackQuery, state: FSMContext):
         
         if user and user.is_onboarded:
             stats_service = StatsService(session)
-            from datetime import date
-            daily = await stats_service.get_daily_summary(user.id, date.today())
+            today = get_user_date(user.timezone)
+            daily = await stats_service.get_daily_summary(user.id, today)
             
             cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
             water_bar = create_water_bar(daily["water_ml"], user.daily_water or 2.0)

@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.states import WaterStates
 from bot.config import Constants
-from bot.utils import create_water_bar
+from bot.utils import create_water_bar, get_user_date
 from core.database import async_session
 from services.user_service import UserService
 from services.water_service import WaterService
@@ -39,7 +39,7 @@ async def callback_water_menu(callback: CallbackQuery, state: FSMContext):
             await callback.answer("Сначала настройте профиль с помощью /start")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         total_ml = await water_service.get_daily_total(user.id, today)
         goal_liters = user.daily_water or 2.0
         
@@ -82,7 +82,7 @@ async def show_water_menu(message: Message):
             await message.answer("Сначала настройте профиль с помощью /start")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         total_ml = await water_service.get_daily_total(user.id, today)
         goal_liters = user.daily_water or 2.0
         
@@ -122,7 +122,7 @@ async def callback_add_water(callback: CallbackQuery, state: FSMContext):
         water_service = WaterService(session)
         
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-        today = date.today()
+        today = get_user_date(user.timezone)
         
         # Добавляем запись
         await water_service.add_water_entry(user.id, amount, today)
@@ -196,7 +196,7 @@ async def process_custom_water(message: Message, state: FSMContext):
             water_service = WaterService(session)
             
             user = await user_service.get_user_by_telegram_id(message.from_user.id)
-            today = date.today()
+            today = get_user_date(user.timezone)
             
             # Добавляем запись
             await water_service.add_water_entry(user.id, amount, today)
@@ -244,7 +244,7 @@ async def callback_undo_water(callback: CallbackQuery):
         water_service = WaterService(session)
         
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-        today = date.today()
+        today = get_user_date(user.timezone)
         
         # Проверяем, есть ли записи
         entries = await water_service.get_entries_by_date(user.id, today)
@@ -275,7 +275,7 @@ async def callback_confirm_undo_water(callback: CallbackQuery):
         water_service = WaterService(session)
         
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-        today = date.today()
+        today = get_user_date(user.timezone)
         
         # Удаляем последнюю запись
         deleted = await water_service.delete_last_entry(user.id, today)
@@ -322,7 +322,7 @@ async def callback_water_history(callback: CallbackQuery):
             await callback.answer("Сначала настройте профиль")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         entries = await water_service.get_entries_by_date(user.id, today)
         total_ml = await water_service.get_daily_total(user.id, today)
         goal_liters = user.daily_water or 2.0
@@ -376,7 +376,7 @@ async def cmd_quick_water(message: Message):
             await message.answer("Сначала настройте профиль с помощью /start")
             return
         
-        today = date.today()
+        today = get_user_date(user.timezone)
         
         # Добавляем 250мл
         await water_service.add_water_entry(user.id, 250, today)

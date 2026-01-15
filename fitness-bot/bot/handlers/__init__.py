@@ -11,6 +11,7 @@ from bot.handlers.weight import router as weight_router
 from bot.handlers.stats import router as stats_router
 from bot.handlers.profile import router as profile_router
 from bot.handlers.reminders import router as reminders_router
+from bot.handlers.account import router as account_router
 
 
 def setup_routers() -> Router:
@@ -25,5 +26,6 @@ def setup_routers() -> Router:
     router.include_router(stats_router)
     router.include_router(profile_router)
     router.include_router(reminders_router)
+    router.include_router(account_router)
     
     return router

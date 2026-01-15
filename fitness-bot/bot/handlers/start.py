@@ -32,7 +32,8 @@ async def cmd_start(message: Message, state: FSMContext):
         )
         
         if not user.is_onboarded:
-            # Начинаем онбординг
+            # Начинаем онбординг с индикатором прогресса
+            progress = "[1/6] ●○○○○○"
             text = f"""
 👋 Привет, {user.display_name}!
 
@@ -46,6 +47,10 @@ async def cmd_start(message: Message, state: FSMContext):
 
 Давай начнём с настройки твоего профиля!
 Это займёт всего пару минут.
+
+{progress}
+
+👤 *Укажи свой пол:*
 """
             await message.answer(
                 text,
@@ -123,10 +128,16 @@ async def cmd_help(message: Message):
 /weight - Записать вес
 /stats - Статистика
 /profile - Профиль
+/reminders - Настройка напоминаний
 
 *Быстрые команды:*
 /quick\_food - Быстро добавить еду
 /quick\_water - Добавить воду (250мл)
+
+*Управление аккаунтом:*
+/export - Экспорт ваших данных
+/delete\_account - Удаление аккаунта
+/support - Связь с поддержкой
 
 *Как пользоваться:*
 1. Записывай все приемы пищи

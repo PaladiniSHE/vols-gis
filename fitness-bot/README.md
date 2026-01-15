@@ -107,12 +107,27 @@ DEBUG=False
 ### Запуск
 
 ```bash
-# Development
+# Development - только бот
 python -m bot.main
 
 # или
 python run.py
+
+# Production - бот + воркер напоминаний
+python -m bot.main &
+python reminder_worker.py &
 ```
+
+### Запуск воркера напоминаний
+
+Для отправки напоминаний пользователям необходимо запустить отдельный процесс:
+
+```bash
+# В отдельном терминале или как systemd сервис
+python reminder_worker.py
+```
+
+Воркер проверяет напоминания каждую минуту и отправляет сообщения пользователям.
 
 ### Запуск тестов
 
@@ -143,7 +158,8 @@ fitness-bot/
 │   │   ├── weight.py        # Вес
 │   │   ├── stats.py         # Статистика
 │   │   ├── profile.py       # Профиль
-│   │   └── reminders.py     # Напоминания
+│   │   ├── reminders.py     # Напоминания
+│   │   └── account.py       # GDPR команды (/export, /delete_account, /support)
 │   ├── keyboards/           # Клавиатуры
 │   ├── middlewares/         # Middleware
 │   │   └── throttling.py    # Rate limiting
@@ -176,10 +192,12 @@ fitness-bot/
 ├── data/
 │   └── foods.json           # База продуктов (330+)
 │
+├── reminder_worker.py       # Воркер отправки напоминаний
 ├── requirements.txt
 ├── .env.example             # Пример конфигурации
 ├── QA_TEST_REPORT.md        # Отчет тестирования
 ├── PRIVACY_POLICY.md        # Политика конфиденциальности
+├── USER_DIAGNOSTIC_REPORT.md # Отчет диагностики
 └── README.md
 ```
 
@@ -224,6 +242,10 @@ TIMEZONE=Europe/Moscow
 | `/reminders` | Настройка напоминаний |
 | `/help` | Помощь |
 | `/quick_water` | +250мл воды |
+| `/quick_food` | Быстро добавить еду |
+| `/export` | Экспорт данных (GDPR) |
+| `/delete_account` | Удаление аккаунта |
+| `/support` | Связь с поддержкой |
 
 ## 📐 Формулы расчета
 

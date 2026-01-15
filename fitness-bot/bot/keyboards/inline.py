@@ -443,6 +443,20 @@ class InlineKeyboards:
         return builder.as_markup()
     
     @staticmethod
+    def confirm_delete_account() -> InlineKeyboardMarkup:
+        """Подтверждение удаления аккаунта"""
+        builder = InlineKeyboardBuilder()
+        
+        builder.row(
+            InlineKeyboardButton(text="🗑️ Да, удалить аккаунт", callback_data="account:confirm_delete")
+        )
+        builder.row(
+            InlineKeyboardButton(text="❌ Нет, отмена", callback_data="account:cancel_delete")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
     def food_with_favorite(food_id: int, is_favorite: bool) -> InlineKeyboardMarkup:
         """Кнопки для продукта с избранным"""
         builder = InlineKeyboardBuilder()

@@ -73,7 +73,7 @@ async def back_to_gender(callback: CallbackQuery, state: FSMContext):
     progress = get_progress_indicator("gender")
     await callback.message.edit_text(
         f"{progress}\n\n"
-        "👤 *Укажи свой пол*",
+        "👤 *Укажи свой пол:*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboards.gender_select()
     )
@@ -314,6 +314,29 @@ async def process_goal_weight(message: Message, state: FSMContext):
                 reply_markup=InlineKeyboards.onboarding_back("goal")
             )
             return
+        
+        # Валидация целевого веса относительно цели
+        data = await state.get_data()
+        current_weight = data.get("weight")
+        goal = data.get("goal")
+        
+        if current_weight and goal:
+            if goal == "lose" and goal_weight >= current_weight:
+                await message.answer(
+                    f"⚠️ Для цели *«Похудеть»* целевой вес должен быть меньше текущего ({current_weight} кг).\n\n"
+                    "Пожалуйста, введи вес меньше текущего, или вернись назад чтобы изменить цель.",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboards.onboarding_back("goal")
+                )
+                return
+            elif goal == "gain" and goal_weight <= current_weight:
+                await message.answer(
+                    f"⚠️ Для цели *«Набрать массу»* целевой вес должен быть больше текущего ({current_weight} кг).\n\n"
+                    "Пожалуйста, введи вес больше текущего, или вернись назад чтобы изменить цель.",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboards.onboarding_back("goal")
+                )
+                return
         
         await state.update_data(goal_weight=goal_weight)
         

@@ -1,6 +1,7 @@
 """
 Inline клавиатуры
 """
+from typing import List, Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -24,8 +25,8 @@ class InlineKeyboards:
             InlineKeyboardButton(text="📊 Статистика", callback_data="menu:stats")
         )
         builder.row(
-            InlineKeyboardButton(text="👤 Профиль", callback_data="menu:profile"),
-            InlineKeyboardButton(text="⚙️ Настройки", callback_data="menu:settings")
+            InlineKeyboardButton(text="⏰ Напоминания", callback_data="menu:reminders"),
+            InlineKeyboardButton(text="👤 Профиль", callback_data="menu:profile")
         )
         
         return builder.as_markup()
@@ -101,6 +102,9 @@ class InlineKeyboards:
         
         builder.row(
             InlineKeyboardButton(text="🔍 Поиск продукта", callback_data="food:search")
+        )
+        builder.row(
+            InlineKeyboardButton(text="🌐 Поиск онлайн (OFF)", callback_data="food:search_off")
         )
         builder.row(
             InlineKeyboardButton(text="⭐ Избранное", callback_data="food:favorites"),
@@ -262,4 +266,138 @@ class InlineKeyboards:
         builder.row(
             InlineKeyboardButton(text="◀️ В главное меню", callback_data="menu:main")
         )
+        return builder.as_markup()
+    
+    @staticmethod
+    def reminders_menu(reminders: list) -> InlineKeyboardMarkup:
+        """Меню напоминаний"""
+        from core.models.reminders import ReminderType
+        
+        builder = InlineKeyboardBuilder()
+        
+        reminder_names = {
+            ReminderType.MEAL_BREAKFAST: "🍳 Завтрак",
+            ReminderType.MEAL_LUNCH: "🍜 Обед",
+            ReminderType.MEAL_DINNER: "🍽️ Ужин",
+            ReminderType.WATER: "💧 Вода",
+            ReminderType.WEIGHT: "⚖️ Вес",
+            ReminderType.WORKOUT: "🏋️ Тренировка",
+        }
+        
+        for r in reminders:
+            status = "✅" if r.is_active else "❌"
+            name = reminder_names.get(r.reminder_type, "⏰")
+            time_str = r.time.strftime("%H:%M")
+            
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"{status} {name} {time_str}",
+                    callback_data=f"reminder:toggle:{r.id}"
+                )
+            )
+        
+        builder.row(
+            InlineKeyboardButton(text="✅ Включить все", callback_data="reminders:enable_all"),
+            InlineKeyboardButton(text="❌ Выключить все", callback_data="reminders:disable_all")
+        )
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="menu:main")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def food_entry_actions(entry_id: int, food_id: Optional[int] = None, is_favorite: bool = False) -> InlineKeyboardMarkup:
+        """Действия с записью о еде"""
+        builder = InlineKeyboardBuilder()
+        
+        if food_id:
+            fav_text = "💔 Убрать из избранного" if is_favorite else "⭐ В избранное"
+            fav_action = "unfavorite" if is_favorite else "favorite"
+            builder.row(
+                InlineKeyboardButton(
+                    text=fav_text,
+                    callback_data=f"food:{fav_action}:{food_id}"
+                )
+            )
+        
+        builder.row(
+            InlineKeyboardButton(
+                text="🗑️ Удалить запись",
+                callback_data=f"food:delete:{entry_id}"
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="menu:food")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def confirm_delete(entry_id: int) -> InlineKeyboardMarkup:
+        """Подтверждение удаления"""
+        builder = InlineKeyboardBuilder()
+        
+        builder.row(
+            InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"food:confirm_delete:{entry_id}"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="menu:food")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def off_search_results(products: list) -> InlineKeyboardMarkup:
+        """Результаты поиска в Open Food Facts"""
+        builder = InlineKeyboardBuilder()
+        
+        for i, product in enumerate(products[:8]):
+            name = product.name[:35] + "..." if len(product.name) > 35 else product.name
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"{name} ({int(product.calories_100g)} ккал)",
+                    callback_data=f"off_food:{i}"
+                )
+            )
+        
+        builder.row(
+            InlineKeyboardButton(text="🔍 Искать в базе", callback_data="food:search"),
+            InlineKeyboardButton(text="◀️ Назад", callback_data="food:add")
+        )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def food_with_favorite(food_id: int, is_favorite: bool) -> InlineKeyboardMarkup:
+        """Кнопки для продукта с избранным"""
+        builder = InlineKeyboardBuilder()
+        
+        portions = [50, 100, 150, 200, 250, 300]
+        
+        for i in range(0, len(portions), 3):
+            row = []
+            for p in portions[i:i+3]:
+                row.append(InlineKeyboardButton(
+                    text=f"{p}г",
+                    callback_data=f"portion:{p}"
+                ))
+            builder.row(*row)
+        
+        builder.row(
+            InlineKeyboardButton(text="✏️ Другое", callback_data="portion:custom")
+        )
+        
+        # Кнопка избранного
+        if is_favorite:
+            builder.row(
+                InlineKeyboardButton(text="💔 Убрать из избранного", callback_data=f"food:unfavorite:{food_id}")
+            )
+        else:
+            builder.row(
+                InlineKeyboardButton(text="⭐ Добавить в избранное", callback_data=f"food:favorite:{food_id}")
+            )
+        
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="food:add")
+        )
+        
         return builder.as_markup()

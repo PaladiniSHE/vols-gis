@@ -18,9 +18,16 @@ pydantic-settings==2.1.0
 # Scheduling
 apscheduler==3.10.4
 
+# Cache (optional, for production)
+redis==5.0.1
+
 # Utilities
 pytz==2024.1
 
-# Development
+# Development & Testing
 pytest==8.0.0
 pytest-asyncio==0.23.4
+pytest-cov==4.1.0
+
+# Logging & Monitoring (optional)
+sentry-sdk==1.39.1

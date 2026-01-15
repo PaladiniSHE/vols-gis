@@ -6,6 +6,8 @@ from core.models.food import Food, FoodEntry
 from core.models.water import WaterEntry
 from core.models.weight import WeightLog
 from core.models.workout import Exercise, Workout, WorkoutExercise
+from core.models.favorites import FavoriteFood
+from core.models.reminders import Reminder, ReminderType
 
 __all__ = [
     "User",
@@ -15,5 +17,8 @@ __all__ = [
     "WeightLog",
     "Exercise",
     "Workout",
-    "WorkoutExercise"
+    "WorkoutExercise",
+    "FavoriteFood",
+    "Reminder",
+    "ReminderType"
 ]

@@ -575,3 +575,256 @@ async def callback_daily_food_stats(callback: CallbackQuery):
         )
     
     await callback.answer()
+
+
+# ===================== УДАЛЕНИЕ ЗАПИСЕЙ =====================
+
+@router.callback_query(F.data.startswith("food:delete:"))
+async def callback_delete_food_entry(callback: CallbackQuery):
+    """Запрос на удаление записи о еде"""
+    entry_id = int(callback.data.split(":")[2])
+    
+    await callback.message.edit_text(
+        "🗑️ *Удалить эту запись?*\n\nДействие нельзя отменить.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboards.confirm_delete(entry_id)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("food:confirm_delete:"))
+async def callback_confirm_delete_food(callback: CallbackQuery):
+    """Подтверждение удаления записи"""
+    entry_id = int(callback.data.split(":")[2])
+    
+    async with async_session() as session:
+        food_service = FoodService(session)
+        user_service = UserService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        
+        deleted = await food_service.delete_food_entry(entry_id, user.id)
+        
+        if deleted:
+            await callback.message.edit_text(
+                "✅ Запись удалена!",
+                reply_markup=InlineKeyboards.back_to_menu()
+            )
+            await callback.answer("Удалено!")
+        else:
+            await callback.message.edit_text(
+                "❌ Ошибка при удалении",
+                reply_markup=InlineKeyboards.back_to_menu()
+            )
+            await callback.answer("Ошибка")
+
+
+# ===================== ИЗБРАННОЕ =====================
+
+@router.callback_query(F.data == "food:favorites")
+async def callback_favorites(callback: CallbackQuery, state: FSMContext):
+    """Показать избранные продукты"""
+    from services.favorites_service import FavoritesService
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        favorites_service = FavoritesService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        favorites = await favorites_service.get_user_favorites(user.id, limit=10)
+        
+        if favorites:
+            await callback.message.edit_text(
+                "⭐ *Избранные продукты:*",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboards.food_search_results(favorites)
+            )
+        else:
+            await callback.message.edit_text(
+                "📭 У вас пока нет избранных продуктов.\n\n"
+                "Добавляйте продукты в избранное для быстрого доступа!",
+                reply_markup=InlineKeyboards.food_add_method()
+            )
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("food:favorite:"))
+async def callback_add_to_favorites(callback: CallbackQuery):
+    """Добавить продукт в избранное"""
+    from services.favorites_service import FavoritesService
+    
+    food_id = int(callback.data.split(":")[2])
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        favorites_service = FavoritesService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        await favorites_service.add_to_favorites(user.id, food_id)
+    
+    await callback.answer("⭐ Добавлено в избранное!")
+
+
+@router.callback_query(F.data.startswith("food:unfavorite:"))
+async def callback_remove_from_favorites(callback: CallbackQuery):
+    """Убрать продукт из избранного"""
+    from services.favorites_service import FavoritesService
+    
+    food_id = int(callback.data.split(":")[2])
+    
+    async with async_session() as session:
+        user_service = UserService(session)
+        favorites_service = FavoritesService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        await favorites_service.remove_from_favorites(user.id, food_id)
+    
+    await callback.answer("💔 Убрано из избранного")
+
+
+# ===================== OPEN FOOD FACTS =====================
+
+@router.callback_query(F.data == "food:search_off")
+async def callback_search_off(callback: CallbackQuery, state: FSMContext):
+    """Начать поиск в Open Food Facts"""
+    await callback.message.edit_text(
+        "🌐 *Поиск в Open Food Facts*\n\n"
+        "Введи название продукта на русском или английском:\n\n"
+        "_Open Food Facts содержит миллионы продуктов со всего мира_",
+        parse_mode="Markdown"
+    )
+    await state.set_state(FoodStates.searching_food)
+    await state.update_data(search_mode="off")
+    await callback.answer()
+
+
+@router.message(FoodStates.searching_food)
+async def process_food_search(message: Message, state: FSMContext):
+    """Обработка поиска продукта"""
+    query = message.text.strip()
+    
+    if len(query) < 2:
+        await message.answer("⚠️ Введите минимум 2 символа для поиска")
+        return
+    
+    data = await state.get_data()
+    search_mode = data.get("search_mode", "local")
+    
+    if search_mode == "off":
+        # Поиск в Open Food Facts
+        from external.openfoodfacts import off_client
+        
+        await message.answer("🔍 Ищу в Open Food Facts...")
+        
+        products = await off_client.search_products(query, limit=8)
+        
+        if not products:
+            # Попробуем глобальный поиск
+            products = await off_client.search_products_global(query, limit=8)
+        
+        if products:
+            # Сохраняем результаты в состояние
+            await state.update_data(off_products=products)
+            
+            await message.answer(
+                f"🌐 Найдено {len(products)} продуктов в Open Food Facts:",
+                reply_markup=InlineKeyboards.off_search_results(products)
+            )
+        else:
+            await message.answer(
+                f"❌ По запросу «{query}» ничего не найдено в Open Food Facts.\n\n"
+                "Попробуйте:\n"
+                "• Изменить запрос\n"
+                "• Поискать в локальной базе\n"
+                "• Добавить продукт вручную",
+                reply_markup=InlineKeyboards.food_add_method()
+            )
+    else:
+        # Локальный поиск
+        async with async_session() as session:
+            food_service = FoodService(session)
+            foods = await food_service.search_foods(query, limit=8)
+            
+            if foods:
+                await message.answer(
+                    f"🔍 Результаты поиска по запросу «{query}»:",
+                    reply_markup=InlineKeyboards.food_search_results(foods)
+                )
+            else:
+                text = f"""
+❌ По запросу «{query}» ничего не найдено.
+
+Попробуй:
+• Изменить запрос
+• Поискать в Open Food Facts 🌐
+• Добавить продукт вручную
+"""
+                await message.answer(
+                    text,
+                    reply_markup=InlineKeyboards.food_add_method()
+                )
+
+
+@router.callback_query(F.data.startswith("off_food:"))
+async def callback_select_off_food(callback: CallbackQuery, state: FSMContext):
+    """Выбор продукта из Open Food Facts"""
+    index = int(callback.data.split(":")[1])
+    
+    data = await state.get_data()
+    products = data.get("off_products", [])
+    
+    if index >= len(products):
+        await callback.answer("Продукт не найден")
+        return
+    
+    product = products[index]
+    
+    # Сохраняем в локальную базу
+    async with async_session() as session:
+        food_service = FoodService(session)
+        user_service = UserService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        
+        # Проверяем, есть ли уже в базе
+        existing = await food_service.get_food_by_barcode(product.barcode) if product.barcode else None
+        
+        if existing:
+            food = existing
+        else:
+            # Создаем новый продукт
+            food = await food_service.create_food(
+                name=product.name,
+                calories_100g=product.calories_100g,
+                protein_100g=product.protein_100g,
+                fat_100g=product.fat_100g,
+                carbs_100g=product.carbs_100g,
+                brand=product.brand,
+                barcode=product.barcode,
+                created_by_user_id=user.id
+            )
+        
+        await state.update_data(food_id=food.id, food_name=food.name)
+        
+        brand_text = f"\n🏭 Бренд: {product.brand}" if product.brand else ""
+        
+        text = f"""
+🌐 *{product.name}*{brand_text}
+
+📊 На 100г:
+├ 🔥 Калории: {int(product.calories_100g)} ккал
+├ 🥩 Белки: {product.protein_100g:.1f}г
+├ 🧈 Жиры: {product.fat_100g:.1f}г
+└ 🍞 Углеводы: {product.carbs_100g:.1f}г
+
+Выбери размер порции:
+"""
+        
+        await callback.message.edit_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboards.portion_select()
+        )
+    
+    await callback.answer()

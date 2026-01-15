@@ -26,6 +26,46 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def setup_sentry():
+    """Настройка Sentry для мониторинга ошибок"""
+    if not settings.sentry_dsn:
+        logger.info("Sentry DSN not configured, error monitoring disabled")
+        return False
+    
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.asyncio import AsyncioIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.sentry_environment,
+            traces_sample_rate=0.1 if settings.debug else 0.01,  # 10% в dev, 1% в prod
+            profiles_sample_rate=0.1 if settings.debug else 0.01,
+            integrations=[
+                AsyncioIntegration(),
+                LoggingIntegration(
+                    level=logging.INFO,
+                    event_level=logging.ERROR
+                ),
+            ],
+            # Не отправлять PII данные
+            send_default_pii=False,
+            # Информация о релизе
+            release=f"fitness-bot@1.1.0",
+        )
+        
+        logger.info(f"Sentry initialized (environment: {settings.sentry_environment})")
+        return True
+        
+    except ImportError:
+        logger.warning("sentry-sdk not installed, error monitoring disabled")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to initialize Sentry: {e}")
+        return False
+
+
 def get_storage():
     """
     Получить хранилище для FSM.
@@ -114,6 +154,9 @@ async def load_initial_data():
 
 async def main():
     """Главная функция запуска бота"""
+    # Инициализация Sentry для мониторинга ошибок
+    sentry_enabled = setup_sentry()
+    
     # Инициализация бота
     bot = Bot(
         token=settings.bot_token,
@@ -127,11 +170,21 @@ async def main():
     dp = Dispatcher(storage=storage)
     
     # Подключаем rate limiting middleware для защиты от спама
-    dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5, max_burst=5, cooldown=3.0))
-    dp.callback_query.middleware(ThrottlingMiddleware(rate_limit=0.3, max_burst=10, cooldown=2.0))
-    dp.message.middleware(AntiFloodMiddleware(max_requests_per_minute=30))
+    dp.message.middleware(ThrottlingMiddleware(
+        rate_limit=settings.rate_limit_interval,
+        max_burst=5,
+        cooldown=3.0
+    ))
+    dp.callback_query.middleware(ThrottlingMiddleware(
+        rate_limit=settings.rate_limit_interval * 0.6,  # Быстрее для callback
+        max_burst=10,
+        cooldown=2.0
+    ))
+    dp.message.middleware(AntiFloodMiddleware(
+        max_requests_per_minute=settings.rate_limit_max_per_minute
+    ))
     
-    logger.info("Rate limiting middleware enabled")
+    logger.info(f"Rate limiting: {settings.rate_limit_interval}s interval, {settings.rate_limit_max_per_minute} req/min")
     
     # Регистрация роутеров
     dp.include_router(setup_routers())

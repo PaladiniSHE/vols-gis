@@ -20,12 +20,20 @@ class Settings(BaseSettings):
         env="DATABASE_URL"
     )
     
-    # Redis (optional)
+    # Redis (optional, recommended for production)
     redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
+    
+    # Monitoring (Sentry)
+    sentry_dsn: Optional[str] = Field(default=None, env="SENTRY_DSN")
+    sentry_environment: str = Field(default="development", env="SENTRY_ENVIRONMENT")
     
     # Application
     debug: bool = Field(default=False, env="DEBUG")
     timezone: str = Field(default="Europe/Moscow", env="TIMEZONE")
+    
+    # Rate limiting
+    rate_limit_interval: float = Field(default=0.5, env="RATE_LIMIT_INTERVAL")
+    rate_limit_max_per_minute: int = Field(default=30, env="RATE_LIMIT_MAX_PER_MINUTE")
     
     class Config:
         env_file = ".env"

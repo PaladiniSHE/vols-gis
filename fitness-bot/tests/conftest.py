@@ -1,61 +1,50 @@
 """
-Конфигурация pytest
+Pytest конфигурация и общие фикстуры
 """
 import pytest
 import asyncio
-import sys
-from pathlib import Path
-
-# Добавляем корневую директорию в путь
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from typing import Generator
 
 
+# Настройка asyncio для pytest
 @pytest.fixture(scope="session")
-def event_loop():
-    """Создать event loop для асинхронных тестов"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """
+    Создать event loop для всех тестов сессии.
+    
+    Это необходимо для корректной работы async тестов с pytest-asyncio.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture
-def sample_user_data():
-    """Пример данных пользователя"""
-    return {
-        "telegram_id": 123456789,
-        "username": "test_user",
-        "first_name": "Test",
-        "last_name": "User",
-        "height": 175,
-        "weight": 70,
-        "age": 30,
-        "gender": "male",
-        "goal": "lose",
-        "activity_level": "medium"
-    }
+# Настройки pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
+
+
+def pytest_configure(config):
+    """
+    Конфигурация pytest при запуске.
+    
+    Добавляем маркеры для категоризации тестов.
+    """
+    config.addinivalue_line(
+        "markers", "asyncio: mark test as async"
+    )
+    config.addinivalue_line(
+        "markers", "unit: mark test as unit test"
+    )
+    config.addinivalue_line(
+        "markers", "integration: mark test as integration test"
+    )
+    config.addinivalue_line(
+        "markers", "slow: mark test as slow running"
+    )
 
 
 @pytest.fixture
-def sample_food_data():
-    """Пример данных продукта"""
-    return {
-        "name": "Куриная грудка",
-        "calories_100g": 165,
-        "protein_100g": 31,
-        "fat_100g": 3.6,
-        "carbs_100g": 0,
-        "category": "Мясо"
-    }
-
-
-@pytest.fixture
-def sample_food_entry():
-    """Пример записи о приеме пищи"""
-    return {
-        "meal_type": "lunch",
-        "portion_size": 150,
-        "calories": 248,
-        "protein": 46.5,
-        "fat": 5.4,
-        "carbs": 0
-    }
+def anyio_backend():
+    """Бэкенд для anyio (используется pytest-asyncio)"""
+    return 'asyncio'

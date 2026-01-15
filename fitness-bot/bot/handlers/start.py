@@ -9,25 +9,12 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.keyboards.reply import ReplyKeyboards
 from bot.states import OnboardingStates
+from bot.utils import create_progress_bar, create_water_bar
 from core.database import async_session
 from services.user_service import UserService
 from services.stats_service import StatsService
 
 router = Router()
-
-
-def create_progress_bar(current: float, goal: float, length: int = 12) -> str:
-    """Создать прогресс-бар"""
-    if goal <= 0:
-        return "░" * length
-    
-    percent = min(current / goal, 1.5)
-    filled = int(percent * length)
-    
-    if percent > 1:
-        return "▓" * length + f" ⚠️ +{int((percent-1)*100)}%"
-    
-    return "▓" * filled + "░" * (length - filled)
 
 
 @router.message(CommandStart())
@@ -80,7 +67,7 @@ async def show_main_menu(message: Message, user, session):
     
     # Формируем текст
     cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
-    water_bar = create_progress_bar(daily["water_liters"], user.daily_water or 2.0)
+    water_bar = create_water_bar(daily["water_ml"], user.daily_water or 2.0)
     
     text = f"""
 🏠 *Главное меню*
@@ -167,7 +154,7 @@ async def callback_main_menu(callback: CallbackQuery, state: FSMContext):
             daily = await stats_service.get_daily_summary(user.id, date.today())
             
             cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
-            water_bar = create_progress_bar(daily["water_liters"], user.daily_water or 2.0)
+            water_bar = create_water_bar(daily["water_ml"], user.daily_water or 2.0)
             
             text = f"""
 🏠 *Главное меню*

@@ -10,26 +10,13 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.states import FoodStates
 from bot.config import Constants
+from bot.utils import create_progress_bar
 from core.database import async_session
 from services.user_service import UserService
 from services.food_service import FoodService
 from services.stats_service import StatsService
 
 router = Router()
-
-
-def create_progress_bar(current: float, goal: float, length: int = 12) -> str:
-    """Создать прогресс-бар"""
-    if goal <= 0:
-        return "░" * length
-    
-    percent = min(current / goal, 1.5)
-    filled = int(percent * length)
-    
-    if percent > 1:
-        return "▓" * length + f" ⚠️"
-    
-    return "▓" * filled + "░" * (length - filled)
 
 
 @router.message(Command("food"))
@@ -173,38 +160,6 @@ async def callback_food_search(callback: CallbackQuery, state: FSMContext):
     )
     await state.set_state(FoodStates.searching_food)
     await callback.answer()
-
-
-@router.message(FoodStates.searching_food)
-async def process_food_search(message: Message, state: FSMContext):
-    """Обработка поиска продукта"""
-    query = message.text.strip()
-    
-    if len(query) < 2:
-        await message.answer("⚠️ Введите минимум 2 символа для поиска")
-        return
-    
-    async with async_session() as session:
-        food_service = FoodService(session)
-        foods = await food_service.search_foods(query, limit=8)
-        
-        if foods:
-            await message.answer(
-                f"🔍 Результаты поиска по запросу «{query}»:",
-                reply_markup=InlineKeyboards.food_search_results(foods)
-            )
-        else:
-            text = f"""
-❌ По запросу «{query}» ничего не найдено.
-
-Попробуй:
-• Изменить запрос
-• Добавить продукт вручную
-"""
-            await message.answer(
-                text,
-                reply_markup=InlineKeyboards.food_add_method()
-            )
 
 
 @router.callback_query(F.data.startswith("select_food:"))
@@ -420,6 +375,11 @@ async def process_custom_protein(message: Message, state: FSMContext):
     """Обработка белков"""
     try:
         protein = float(message.text.strip().replace(",", "."))
+        
+        if protein < 0 or protein > 100:
+            await message.answer("⚠️ Введите корректное значение белков (0-100 г/100г)")
+            return
+        
         await state.update_data(custom_protein=protein)
         
         await message.answer(
@@ -437,6 +397,11 @@ async def process_custom_fat(message: Message, state: FSMContext):
     """Обработка жиров"""
     try:
         fat = float(message.text.strip().replace(",", "."))
+        
+        if fat < 0 or fat > 100:
+            await message.answer("⚠️ Введите корректное значение жиров (0-100 г/100г)")
+            return
+        
         await state.update_data(custom_fat=fat)
         
         await message.answer(
@@ -454,6 +419,11 @@ async def process_custom_carbs(message: Message, state: FSMContext):
     """Обработка углеводов и сохранение продукта"""
     try:
         carbs = float(message.text.strip().replace(",", "."))
+        
+        if carbs < 0 or carbs > 100:
+            await message.answer("⚠️ Введите корректное значение углеводов (0-100 г/100г)")
+            return
+        
         data = await state.get_data()
         
         async with async_session() as session:
@@ -714,28 +684,59 @@ async def process_food_search(message: Message, state: FSMContext):
     if search_mode == "off":
         # Поиск в Open Food Facts
         from external.openfoodfacts import off_client
+        import asyncio
+        import aiohttp
         
         await message.answer("🔍 Ищу в Open Food Facts...")
         
-        products = await off_client.search_products(query, limit=8)
-        
-        if not products:
-            # Попробуем глобальный поиск
-            products = await off_client.search_products_global(query, limit=8)
-        
-        if products:
-            # Сохраняем результаты в состояние
-            await state.update_data(off_products=products)
+        try:
+            products = await off_client.search_products(query, limit=8)
             
+            if not products:
+                # Попробуем глобальный поиск
+                products = await off_client.search_products_global(query, limit=8)
+            
+            if products:
+                # Сохраняем результаты в состояние
+                await state.update_data(off_products=products)
+                
+                await message.answer(
+                    f"🌐 Найдено {len(products)} продуктов в Open Food Facts:",
+                    reply_markup=InlineKeyboards.off_search_results(products)
+                )
+            else:
+                await message.answer(
+                    f"❌ По запросу «{query}» ничего не найдено в Open Food Facts.\n\n"
+                    "Попробуйте:\n"
+                    "• Изменить запрос\n"
+                    "• Поискать в локальной базе\n"
+                    "• Добавить продукт вручную",
+                    reply_markup=InlineKeyboards.food_add_method()
+                )
+        
+        except asyncio.TimeoutError:
             await message.answer(
-                f"🌐 Найдено {len(products)} продуктов в Open Food Facts:",
-                reply_markup=InlineKeyboards.off_search_results(products)
-            )
-        else:
-            await message.answer(
-                f"❌ По запросу «{query}» ничего не найдено в Open Food Facts.\n\n"
+                "⏳ Превышено время ожидания ответа от Open Food Facts.\n\n"
                 "Попробуйте:\n"
-                "• Изменить запрос\n"
+                "• Повторить поиск позже\n"
+                "• Поискать в локальной базе\n"
+                "• Добавить продукт вручную",
+                reply_markup=InlineKeyboards.food_add_method()
+            )
+        except aiohttp.ClientError:
+            await message.answer(
+                "🌐 Ошибка подключения к Open Food Facts.\n\n"
+                "Проверьте интернет-соединение или попробуйте:\n"
+                "• Поискать в локальной базе\n"
+                "• Добавить продукт вручную",
+                reply_markup=InlineKeyboards.food_add_method()
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"OFF search error: {e}")
+            await message.answer(
+                "❌ Произошла ошибка при поиске.\n\n"
+                "Попробуйте:\n"
                 "• Поискать в локальной базе\n"
                 "• Добавить продукт вручную",
                 reply_markup=InlineKeyboards.food_add_method()

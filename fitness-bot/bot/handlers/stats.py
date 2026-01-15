@@ -8,29 +8,12 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.inline import InlineKeyboards
+from bot.utils import create_progress_bar, create_water_bar
 from core.database import async_session
 from services.user_service import UserService
 from services.stats_service import StatsService
 
 router = Router()
-
-
-def create_progress_bar(current: float, goal: float, length: int = 10) -> str:
-    """Создать прогресс-бар"""
-    if goal <= 0:
-        return "░" * length
-    
-    percent = min(current / goal, 1.5)
-    filled = int(percent * length)
-    
-    if percent >= 1:
-        return "▓" * length + " ✅"
-    elif percent >= 0.8:
-        return "▓" * filled + "░" * (length - filled)
-    elif percent >= 0.5:
-        return "▓" * filled + "░" * (length - filled)
-    else:
-        return "▓" * filled + "░" * (length - filled)
 
 
 @router.message(Command("stats"))
@@ -77,12 +60,12 @@ async def callback_stats_today(callback: CallbackQuery):
         today = date.today()
         daily = await stats_service.get_daily_summary(user.id, today)
         
-        # Прогресс-бары
-        cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000)
-        prot_bar = create_progress_bar(daily["protein"], user.daily_protein or 100)
-        fat_bar = create_progress_bar(daily["fat"], user.daily_fat or 65)
-        carb_bar = create_progress_bar(daily["carbs"], user.daily_carbs or 250)
-        water_bar = create_progress_bar(daily["water_liters"], user.daily_water or 2.0)
+        # Прогресс-бары (length=10 для более компактного отображения)
+        cal_bar = create_progress_bar(daily["calories"], user.daily_calories or 2000, length=10)
+        prot_bar = create_progress_bar(daily["protein"], user.daily_protein or 100, length=10)
+        fat_bar = create_progress_bar(daily["fat"], user.daily_fat or 65, length=10)
+        carb_bar = create_progress_bar(daily["carbs"], user.daily_carbs or 250, length=10)
+        water_bar = create_water_bar(daily["water_ml"], user.daily_water or 2.0, length=10)
         
         # Проценты
         cal_pct = int((daily["calories"] / (user.daily_calories or 1)) * 100)

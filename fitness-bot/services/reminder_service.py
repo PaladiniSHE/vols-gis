@@ -76,10 +76,21 @@ class ReminderService:
         )
         return result.scalars().all()
     
-    async def toggle_reminder(self, reminder_id: int) -> Optional[Reminder]:
-        """Переключить статус напоминания"""
+    async def toggle_reminder(self, reminder_id: int, user_id: int = None) -> Optional[Reminder]:
+        """Переключить статус напоминания
+        
+        Args:
+            reminder_id: ID напоминания
+            user_id: ID пользователя для проверки владельца (если указан)
+        
+        Returns:
+            Reminder или None если не найдено или не принадлежит пользователю
+        """
         reminder = await self.get_reminder(reminder_id)
         if reminder:
+            # Проверяем владельца если user_id указан
+            if user_id is not None and reminder.user_id != user_id:
+                return None
             reminder.is_active = not reminder.is_active
             await self.session.commit()
             await self.session.refresh(reminder)

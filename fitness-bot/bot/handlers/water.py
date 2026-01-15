@@ -10,26 +10,12 @@ from aiogram.fsm.context import FSMContext
 from bot.keyboards.inline import InlineKeyboards
 from bot.states import WaterStates
 from bot.config import Constants
+from bot.utils import create_water_bar
 from core.database import async_session
 from services.user_service import UserService
 from services.water_service import WaterService
 
 router = Router()
-
-
-def create_water_bar(current_ml: int, goal_liters: float, length: int = 12) -> str:
-    """Создать прогресс-бар для воды"""
-    goal_ml = goal_liters * 1000
-    if goal_ml <= 0:
-        return "░" * length
-    
-    percent = min(current_ml / goal_ml, 1.5)
-    filled = int(percent * length)
-    
-    if percent >= 1:
-        return "💧" * length + " ✅"
-    
-    return "💧" * filled + "░" * (length - filled)
 
 
 @router.message(Command("water"))

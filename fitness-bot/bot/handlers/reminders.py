@@ -126,7 +126,12 @@ async def callback_toggle_reminder(callback: CallbackQuery):
         reminder_service = ReminderService(session)
         
         user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-        reminder = await reminder_service.toggle_reminder(reminder_id)
+        if not user:
+            await callback.answer("Ошибка: пользователь не найден")
+            return
+        
+        # Передаем user.id для проверки владельца (SEC-001 fix)
+        reminder = await reminder_service.toggle_reminder(reminder_id, user.id)
         
         if reminder:
             status = "включено ✅" if reminder.is_active else "выключено ❌"
@@ -142,7 +147,7 @@ async def callback_toggle_reminder(callback: CallbackQuery):
                 reply_markup=InlineKeyboards.reminders_menu(reminders)
             )
         else:
-            await callback.answer("Ошибка")
+            await callback.answer("Ошибка: напоминание не найдено или недоступно")
 
 
 @router.callback_query(F.data == "reminders:enable_all")

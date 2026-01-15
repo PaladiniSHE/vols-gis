@@ -742,15 +742,27 @@ async def process_food_search(message: Message, state: FSMContext):
                 reply_markup=InlineKeyboards.food_add_method()
             )
     else:
-        # Локальный поиск
+        # Локальный поиск с пагинацией
         async with async_session() as session:
             food_service = FoodService(session)
-            foods = await food_service.search_foods(query, limit=8)
+            page_size = 8
+            foods = await food_service.search_foods(query, limit=page_size, offset=0)
+            total_count = await food_service.count_search_results(query)
             
             if foods:
+                # Сохраняем запрос для пагинации
+                await state.update_data(last_search_query=query)
+                
                 await message.answer(
-                    f"🔍 Результаты поиска по запросу «{query}»:",
-                    reply_markup=InlineKeyboards.food_search_results(foods)
+                    f"🔍 Найдено *{total_count}* продуктов по запросу «{query}»:",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboards.food_search_results(
+                        foods, 
+                        query=query, 
+                        page=0, 
+                        total_count=total_count,
+                        page_size=page_size
+                    )
                 )
             else:
                 text = f"""
@@ -765,6 +777,53 @@ async def process_food_search(message: Message, state: FSMContext):
                     text,
                     reply_markup=InlineKeyboards.food_add_method()
                 )
+
+
+@router.callback_query(F.data.startswith("food:page:"))
+async def callback_food_page(callback: CallbackQuery, state: FSMContext):
+    """Переключение страницы поиска продуктов"""
+    parts = callback.data.split(":")
+    page = int(parts[2])
+    query = ":".join(parts[3:]) if len(parts) > 3 else ""
+    
+    if not query:
+        data = await state.get_data()
+        query = data.get("last_search_query", "")
+    
+    if not query:
+        await callback.answer("Повторите поиск")
+        return
+    
+    async with async_session() as session:
+        food_service = FoodService(session)
+        page_size = 8
+        offset = page * page_size
+        
+        foods = await food_service.search_foods(query, limit=page_size, offset=offset)
+        total_count = await food_service.count_search_results(query)
+        
+        if foods:
+            await callback.message.edit_text(
+                f"🔍 Найдено *{total_count}* продуктов по запросу «{query}»:",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboards.food_search_results(
+                    foods,
+                    query=query,
+                    page=page,
+                    total_count=total_count,
+                    page_size=page_size
+                )
+            )
+        else:
+            await callback.answer("Больше результатов нет")
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data == "noop")
+async def callback_noop(callback: CallbackQuery):
+    """Пустой обработчик для информационных кнопок"""
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("off_food:"))

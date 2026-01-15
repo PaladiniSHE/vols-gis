@@ -12,6 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot.config import settings
 from bot.handlers import setup_routers
+from bot.middlewares import ThrottlingMiddleware, AntiFloodMiddleware
 from core.database import init_db, close_db
 
 
@@ -23,6 +24,28 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_storage():
+    """
+    Получить хранилище для FSM.
+    Использует Redis если доступен, иначе MemoryStorage.
+    """
+    if settings.redis_url:
+        try:
+            from aiogram.fsm.storage.redis import RedisStorage
+            from redis.asyncio import Redis
+            
+            redis = Redis.from_url(settings.redis_url)
+            logger.info(f"Using RedisStorage: {settings.redis_url}")
+            return RedisStorage(redis=redis)
+        except ImportError:
+            logger.warning("redis package not installed, falling back to MemoryStorage")
+        except Exception as e:
+            logger.warning(f"Failed to connect to Redis: {e}, falling back to MemoryStorage")
+    
+    logger.info("Using MemoryStorage (FSM data will be lost on restart)")
+    return MemoryStorage()
 
 
 async def on_startup(bot: Bot):
@@ -97,11 +120,18 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
     )
     
-    # Хранилище состояний (в памяти, можно заменить на Redis)
-    storage = MemoryStorage()
+    # Хранилище состояний (Redis для production, MemoryStorage для development)
+    storage = get_storage()
     
     # Инициализация диспетчера
     dp = Dispatcher(storage=storage)
+    
+    # Подключаем rate limiting middleware для защиты от спама
+    dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5, max_burst=5, cooldown=3.0))
+    dp.callback_query.middleware(ThrottlingMiddleware(rate_limit=0.3, max_burst=10, cooldown=2.0))
+    dp.message.middleware(AntiFloodMiddleware(max_requests_per_minute=30))
+    
+    logger.info("Rate limiting middleware enabled")
     
     # Регистрация роутеров
     dp.include_router(setup_routers())

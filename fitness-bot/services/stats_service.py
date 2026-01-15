@@ -72,16 +72,24 @@ class StatsService:
         return summaries
     
     async def get_weekly_averages(self, user_id: int) -> Dict:
-        """Получить средние показатели за неделю"""
-        today = date.today()
-        week_ago = today - timedelta(days=7)
+        """
+        Получить средние показатели за неделю.
         
+        Считает сумму по каждому дню, затем среднее по дням.
+        Это корректнее, чем AVG по записям (иначе дни с большим количеством
+        записей имеют больший вес).
+        """
+        today = date.today()
+        week_ago = today - timedelta(days=6)  # 7 дней включая сегодня
+        
+        # Группируем по дням и суммируем
         result = await self.session.execute(
             select(
-                func.avg(FoodEntry.calories).label("avg_calories"),
-                func.avg(FoodEntry.protein).label("avg_protein"),
-                func.avg(FoodEntry.fat).label("avg_fat"),
-                func.avg(FoodEntry.carbs).label("avg_carbs")
+                FoodEntry.entry_date,
+                func.sum(FoodEntry.calories).label("daily_calories"),
+                func.sum(FoodEntry.protein).label("daily_protein"),
+                func.sum(FoodEntry.fat).label("daily_fat"),
+                func.sum(FoodEntry.carbs).label("daily_carbs")
             )
             .where(
                 and_(
@@ -90,14 +98,33 @@ class StatsService:
                     FoodEntry.entry_date <= today
                 )
             )
+            .group_by(FoodEntry.entry_date)
         )
-        row = result.one()
+        
+        daily_totals = result.all()
+        
+        if not daily_totals:
+            return {
+                "avg_calories": 0,
+                "avg_protein": 0,
+                "avg_fat": 0,
+                "avg_carbs": 0,
+                "days_with_data": 0
+            }
+        
+        # Считаем средние по дням (не по записям!)
+        days_count = len(daily_totals)
+        total_calories = sum(d.daily_calories or 0 for d in daily_totals)
+        total_protein = sum(d.daily_protein or 0 for d in daily_totals)
+        total_fat = sum(d.daily_fat or 0 for d in daily_totals)
+        total_carbs = sum(d.daily_carbs or 0 for d in daily_totals)
         
         return {
-            "avg_calories": round(float(row.avg_calories or 0), 0),
-            "avg_protein": round(float(row.avg_protein or 0), 1),
-            "avg_fat": round(float(row.avg_fat or 0), 1),
-            "avg_carbs": round(float(row.avg_carbs or 0), 1)
+            "avg_calories": round(total_calories / days_count, 0),
+            "avg_protein": round(total_protein / days_count, 1),
+            "avg_fat": round(total_fat / days_count, 1),
+            "avg_carbs": round(total_carbs / days_count, 1),
+            "days_with_data": days_count
         }
     
     async def get_weight_history(

@@ -140,8 +140,22 @@ class UserService:
         return user
     
     async def update_streak(self, telegram_id: int) -> User:
-        """Обновить серию активности пользователя"""
-        user = await self.get_user_by_telegram_id(telegram_id)
+        """
+        Обновить серию активности пользователя.
+        
+        Использует SELECT FOR UPDATE для предотвращения race condition
+        при одновременных запросах от одного пользователя.
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import with_for_update
+        
+        # Блокируем запись для обновления (предотвращает race condition)
+        result = await self.session.execute(
+            select(User)
+            .where(User.telegram_id == telegram_id)
+            .with_for_update()
+        )
+        user = result.scalar_one_or_none()
         
         if user is None:
             raise ValueError(f"User with telegram_id {telegram_id} not found")
@@ -152,8 +166,9 @@ class UserService:
             # Первая активность
             user.current_streak = 1
         elif user.last_activity_date == today:
-            # Уже была активность сегодня
-            pass
+            # Уже была активность сегодня - не изменяем streak
+            await self.session.commit()
+            return user
         elif (today - user.last_activity_date).days == 1:
             # Продолжение серии
             user.current_streak += 1

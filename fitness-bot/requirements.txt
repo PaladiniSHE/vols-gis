@@ -18,8 +18,9 @@ pydantic-settings==2.1.0
 # Scheduling
 apscheduler==3.10.4
 
-# Cache (optional, for production)
+# Cache & FSM Storage (for production)
 redis==5.0.1
+hiredis==2.3.2  # Optional: C-based Redis parser for better performance
 
 # Utilities
 pytz==2024.1

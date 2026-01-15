@@ -238,7 +238,38 @@ async def process_custom_water(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "water:undo")
 async def callback_undo_water(callback: CallbackQuery):
-    """Отменить последнюю запись воды"""
+    """Запрос подтверждения отмены последней записи воды"""
+    async with async_session() as session:
+        user_service = UserService(session)
+        water_service = WaterService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        today = date.today()
+        
+        # Проверяем, есть ли записи
+        entries = await water_service.get_entries_by_date(user.id, today)
+        
+        if not entries:
+            await callback.answer("❌ Нет записей для отмены")
+            return
+        
+        # Показываем последнюю запись и просим подтверждение
+        last_entry = entries[-1]
+        time_str = last_entry.logged_at.strftime("%H:%M")
+        
+        await callback.message.edit_text(
+            f"🗑️ *Отменить последнюю запись?*\n\n"
+            f"🕐 {time_str} — *{last_entry.amount_ml}* мл",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboards.confirm_water_undo()
+        )
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data == "water:confirm_undo")
+async def callback_confirm_undo_water(callback: CallbackQuery):
+    """Подтверждение отмены последней записи воды"""
     async with async_session() as session:
         user_service = UserService(session)
         water_service = WaterService(session)
@@ -261,7 +292,7 @@ async def callback_undo_water(callback: CallbackQuery):
             text = f"""
 💧 *Водный баланс*
 
-↩️ Последняя запись отменена
+✅ Последняя запись отменена
 
 💧 Выпито: *{current_liters:.1f}л* / {goal_liters}л ({percent}%)
 {water_bar}
@@ -274,9 +305,63 @@ async def callback_undo_water(callback: CallbackQuery):
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboards.water_amounts()
             )
-            await callback.answer("↩️ Отменено")
+            await callback.answer("✅ Отменено")
         else:
-            await callback.answer("❌ Нет записей для отмены")
+            await callback.answer("❌ Ошибка при отмене")
+
+
+@router.callback_query(F.data == "water:history")
+async def callback_water_history(callback: CallbackQuery):
+    """История воды за сегодня"""
+    async with async_session() as session:
+        user_service = UserService(session)
+        water_service = WaterService(session)
+        
+        user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+        if not user:
+            await callback.answer("Сначала настройте профиль")
+            return
+        
+        today = date.today()
+        entries = await water_service.get_entries_by_date(user.id, today)
+        total_ml = await water_service.get_daily_total(user.id, today)
+        goal_liters = user.daily_water or 2.0
+        
+        if not entries:
+            text = f"""
+📋 *История воды за сегодня*
+
+📅 {today.strftime('%d.%m.%Y')}
+
+📭 Записей пока нет.
+
+Добавь первый стакан воды!
+"""
+        else:
+            text = f"""
+📋 *История воды за сегодня*
+
+📅 {today.strftime('%d.%m.%Y')}
+
+"""
+            for entry in entries:
+                time_str = entry.logged_at.strftime("%H:%M")
+                text += f"├ 🕐 {time_str} — *{entry.amount_ml}* мл\n"
+            
+            text += f"""
+━━━━━━━━━━━━━━━
+💧 *Итого:* {total_ml} мл ({total_ml/1000:.1f} л)
+🎯 *Цель:* {int(goal_liters * 1000)} мл ({goal_liters} л)
+📊 *Выполнено:* {int(total_ml / (goal_liters * 1000) * 100)}%
+"""
+        
+        await callback.message.edit_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboards.water_history_back()
+        )
+    
+    await callback.answer()
 
 
 @router.message(Command("quick_water"))

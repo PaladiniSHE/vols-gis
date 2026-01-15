@@ -17,15 +17,26 @@ class FoodService:
         self.session = session
         self.calculator = CalculatorService()
     
-    async def search_foods(self, query: str, limit: int = 10) -> List[Food]:
-        """Поиск продуктов по названию"""
+    async def search_foods(self, query: str, limit: int = 10, offset: int = 0) -> List[Food]:
+        """Поиск продуктов по названию с пагинацией"""
         result = await self.session.execute(
             select(Food)
             .where(Food.name.ilike(f"%{query}%"))
             .order_by(Food.usage_count.desc())
+            .offset(offset)
             .limit(limit)
         )
         return result.scalars().all()
+    
+    async def count_search_results(self, query: str) -> int:
+        """Подсчет количества результатов поиска"""
+        from sqlalchemy import func
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(Food)
+            .where(Food.name.ilike(f"%{query}%"))
+        )
+        return result.scalar() or 0
     
     async def get_food_by_id(self, food_id: int) -> Optional[Food]:
         """Получить продукт по ID"""

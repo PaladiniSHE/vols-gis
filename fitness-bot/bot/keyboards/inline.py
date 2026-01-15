@@ -33,18 +33,21 @@ class InlineKeyboards:
     
     @staticmethod
     def gender_select() -> InlineKeyboardMarkup:
-        """Выбор пола"""
+        """Выбор пола (Шаг 1 - без кнопки Назад)"""
         builder = InlineKeyboardBuilder()
         
         builder.row(
             InlineKeyboardButton(text="👨 Мужской", callback_data="gender:male"),
             InlineKeyboardButton(text="👩 Женский", callback_data="gender:female")
         )
+        builder.row(
+            InlineKeyboardButton(text="❌ Отмена", callback_data="onboarding:cancel")
+        )
         
         return builder.as_markup()
     
     @staticmethod
-    def goal_select() -> InlineKeyboardMarkup:
+    def goal_select(with_back: bool = False) -> InlineKeyboardMarkup:
         """Выбор цели"""
         builder = InlineKeyboardBuilder()
         
@@ -56,10 +59,15 @@ class InlineKeyboards:
                 )
             )
         
+        if with_back:
+            builder.row(
+                InlineKeyboardButton(text="◀️ Назад", callback_data="onboarding:back_to_weight")
+            )
+        
         return builder.as_markup()
     
     @staticmethod
-    def activity_select() -> InlineKeyboardMarkup:
+    def activity_select(with_back: bool = False) -> InlineKeyboardMarkup:
         """Выбор уровня активности"""
         builder = InlineKeyboardBuilder()
         
@@ -71,6 +79,20 @@ class InlineKeyboards:
                 )
             )
         
+        if with_back:
+            builder.row(
+                InlineKeyboardButton(text="◀️ Назад", callback_data="onboarding:back_to_goal")
+            )
+        
+        return builder.as_markup()
+    
+    @staticmethod
+    def onboarding_back(step: str) -> InlineKeyboardMarkup:
+        """Кнопка назад для текстовых шагов онбординга"""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"onboarding:back_to_{step}")
+        )
         return builder.as_markup()
     
     @staticmethod
@@ -120,17 +142,51 @@ class InlineKeyboards:
         return builder.as_markup()
     
     @staticmethod
-    def food_search_results(foods: list) -> InlineKeyboardMarkup:
-        """Результаты поиска продуктов"""
+    def food_search_results(
+        foods: list, 
+        query: str = "", 
+        page: int = 0, 
+        total_count: int = 0,
+        page_size: int = 8
+    ) -> InlineKeyboardMarkup:
+        """Результаты поиска продуктов с пагинацией"""
         builder = InlineKeyboardBuilder()
         
-        for food in foods[:8]:
+        for food in foods[:page_size]:
+            name = food.name[:30] + "..." if len(food.name) > 30 else food.name
             builder.row(
                 InlineKeyboardButton(
-                    text=f"{food.name} ({int(food.calories_100g)} ккал/100г)",
+                    text=f"{name} ({int(food.calories_100g)} ккал)",
                     callback_data=f"select_food:{food.id}"
                 )
             )
+        
+        # Пагинация если есть больше результатов
+        has_prev = page > 0
+        has_next = (page + 1) * page_size < total_count
+        
+        if has_prev or has_next:
+            nav_row = []
+            if has_prev:
+                nav_row.append(InlineKeyboardButton(
+                    text="◀️ Пред.",
+                    callback_data=f"food:page:{page-1}:{query}"
+                ))
+            
+            # Показываем информацию о странице
+            total_pages = (total_count + page_size - 1) // page_size
+            nav_row.append(InlineKeyboardButton(
+                text=f"{page+1}/{total_pages}",
+                callback_data="noop"
+            ))
+            
+            if has_next:
+                nav_row.append(InlineKeyboardButton(
+                    text="След. ▶️",
+                    callback_data=f"food:page:{page+1}:{query}"
+                ))
+            
+            builder.row(*nav_row)
         
         builder.row(
             InlineKeyboardButton(text="✏️ Добавить свой", callback_data="food:manual"),
@@ -179,7 +235,8 @@ class InlineKeyboards:
             InlineKeyboardButton(text="🥤 500мл", callback_data="water:500")
         )
         builder.row(
-            InlineKeyboardButton(text="✏️ Другое", callback_data="water:custom")
+            InlineKeyboardButton(text="✏️ Другое", callback_data="water:custom"),
+            InlineKeyboardButton(text="📋 История", callback_data="water:history")
         )
         builder.row(
             InlineKeyboardButton(text="↩️ Отменить последнее", callback_data="water:undo")
@@ -188,6 +245,25 @@ class InlineKeyboards:
             InlineKeyboardButton(text="◀️ Назад", callback_data="menu:main")
         )
         
+        return builder.as_markup()
+    
+    @staticmethod
+    def water_history_back() -> InlineKeyboardMarkup:
+        """Кнопка назад из истории воды"""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад к воде", callback_data="menu:water")
+        )
+        return builder.as_markup()
+    
+    @staticmethod
+    def confirm_water_undo() -> InlineKeyboardMarkup:
+        """Подтверждение отмены последней записи воды"""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(text="✅ Да, отменить", callback_data="water:confirm_undo"),
+            InlineKeyboardButton(text="❌ Нет", callback_data="menu:water")
+        )
         return builder.as_markup()
     
     @staticmethod
